@@ -95,15 +95,15 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
   return (
     <main className="relative overflow-hidden bg-[var(--surface-0)] text-[var(--foreground)]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[rgba(4,8,18,0.82)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <a href="#top" className="flex items-center gap-3">
-            <img src="/brand/uai-logo.png" alt="UPLINE AGENT AI" className="h-10 w-10" />
-            <div>
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <a href="#top" className="flex min-w-0 items-center gap-3">
+            <img src="/brand/uai-logo.png" alt="UPLINE AGENT AI" className="h-10 w-10 shrink-0" />
+            <div className="min-w-0">
               <div className="text-[11px] font-semibold tracking-[0.24em] text-blue-300/90">UPLINE AGENT AI</div>
               <div className="text-[10px] text-[var(--muted-2)]">Agent portal + lead marketplace</div>
             </div>
           </a>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end md:gap-3">
             <button
               type="button"
               onClick={() => setContactOpen(true)}
