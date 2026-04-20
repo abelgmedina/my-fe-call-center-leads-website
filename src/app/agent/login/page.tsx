@@ -393,44 +393,44 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Lead delivery examples for local and telesales agents</div>
-                <h3 className="mt-3 text-3xl font-semibold text-white">See exactly how leads are delivered for each agent type.</h3>
+                <h3 className="mt-3 text-3xl font-semibold text-white">See exactly how leads are delivered for each lead type.</h3>
               </div>
               <p className="max-w-2xl text-sm text-[var(--muted)]">
-                Local agents and telesales agents receive lead details differently. Below is a simple breakdown for English and Spanish delivery so buyers know what to expect before ordering.
+                Local and telesales leads are delivered differently. Below is a simple breakdown for English and Spanish lead types so buyers know what to expect before ordering.
               </p>
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               <div className="rounded-[30px] border border-blue-500/20 bg-[linear-gradient(180deg,rgba(37,99,235,0.12),rgba(255,255,255,0.03))] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English delivery</div>
-                <h4 className="mt-3 text-2xl font-semibold text-white">Delivery for English local and telesales agents</h4>
+                <h4 className="mt-3 text-2xl font-semibold text-white">Delivery for English local and telesales leads</h4>
                 <div className="mt-6 grid gap-5">
                   <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English Local</div>
-                    <h5 className="mt-3 text-xl font-semibold text-white">Local field agents</h5>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Local agents receive a lead PDF card by email, a Google Sheet where leads can trickle in live, and an SMS or text alert with the lead details for fast follow-up.</p>
+                    <h5 className="mt-3 text-xl font-semibold text-white">English local leads</h5>
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">English local leads include a PDF lead card by email, a Google Sheet where leads can trickle in live, and an SMS or text alert with the lead details for fast follow-up.</p>
                   </article>
                   <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English Telesales</div>
-                    <h5 className="mt-3 text-xl font-semibold text-white">Telesales agents</h5>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Telesales agents receive the same live Google Sheet flow, email delivery of lead details, and SMS or text updates, but without the PDF lead card format used for local field agents.</p>
+                    <h5 className="mt-3 text-xl font-semibold text-white">English telesales leads</h5>
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">English telesales leads receive the same live Google Sheet flow, email delivery of lead details, and SMS or text updates, but without the PDF lead card format used for local field agents.</p>
                   </article>
                 </div>
               </div>
 
               <div className="rounded-[30px] border border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.10),rgba(255,255,255,0.03))] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Entrega en español</div>
-                <h4 className="mt-3 text-2xl font-semibold text-white">Entrega para agentes locales y de telesales en español</h4>
+                <h4 className="mt-3 text-2xl font-semibold text-white">Entrega para leads locales y de telesales en español</h4>
                 <div className="mt-6 grid gap-5">
                   <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Español Local</div>
-                    <h5 className="mt-3 text-xl font-semibold text-white">Agentes locales de campo</h5>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Los agentes locales reciben una tarjeta PDF del lead por correo electrónico, una hoja de Google donde los leads van entrando en tiempo real, y una alerta por SMS o texto con los detalles del lead para seguimiento rápido.</p>
+                    <h5 className="mt-3 text-xl font-semibold text-white">Leads locales en español</h5>
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Los leads locales en español incluyen una tarjeta PDF por correo electrónico, una hoja de Google donde los leads van entrando en tiempo real, y una alerta por SMS o texto con los detalles del lead para seguimiento rápido.</p>
                   </article>
                   <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Español Telesales</div>
-                    <h5 className="mt-3 text-xl font-semibold text-white">Agentes de telesales</h5>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Los agentes de telesales reciben la misma hoja de Google en vivo, el correo electrónico con los detalles del lead, y alertas por SMS o texto, pero sin la tarjeta PDF que se usa para los agentes locales.</p>
+                    <h5 className="mt-3 text-xl font-semibold text-white">Leads de telesales en español</h5>
+                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Los leads de telesales en español reciben la misma hoja de Google en vivo, el correo electrónico con los detalles del lead, y alertas por SMS o texto, pero sin la tarjeta PDF que se usa para los leads locales.</p>
                   </article>
                 </div>
               </div>
