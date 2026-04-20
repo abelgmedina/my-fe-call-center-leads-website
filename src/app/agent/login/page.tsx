@@ -325,14 +325,10 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             </div>
           </div>
 
-          <div className="mt-16 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Lead products</div>
-              <h3 className="mt-3 text-3xl font-semibold text-white">Simple lead navigation, split clearly between English and Spanish.</h3>
-            </div>
-            <p className="max-w-2xl text-sm text-[var(--muted)]">
-              Keep it easy. Agents should instantly understand whether they are buying English leads or leads en español, then choose local or telesales based on how they sell.
-            </p>
+          <div className="mt-16">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Lead products</div>
+            <h3 className="mt-3 text-3xl font-semibold text-white">Choose your lead type.</h3>
+            <p className="mt-3 max-w-2xl text-sm text-[var(--muted)]">English or Spanish. Local or telesales.</p>
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
