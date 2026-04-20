@@ -132,9 +132,9 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
         <div className="absolute -top-40 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full bg-blue-600/12 blur-3xl" />
       </div>
 
-      <section id="top" className="relative mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-10 p-6 pt-10 md:grid-cols-2">
+      <section id="top" className="relative mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:px-6 md:grid-cols-2 md:gap-10 md:pt-10">
         <section className="flex flex-col justify-center">
-          <div className="inline-flex items-center gap-5">
+          <div className="inline-flex items-center gap-4 sm:gap-5">
             <div className="relative">
               <div className="pointer-events-none absolute -inset-6 rounded-[28px] bg-[radial-gradient(closest-side,rgba(59,130,246,0.35),transparent_70%)] blur-xl" />
               <div className="rounded-[28px] border border-blue-500/25 bg-gradient-to-br from-blue-500/8 via-transparent to-transparent p-[10px] shadow-[0_0_0_1px_rgba(59,130,246,0.12),0_0_55px_rgba(59,130,246,0.18)]">
@@ -142,7 +142,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                   <img
                     src="/brand/uai-logo.png"
                     alt="UPLINE AGENT AI"
-                    className="h-24 w-24 [filter:drop-shadow(0_10px_30px_rgba(59,130,246,0.25))]"
+                    className="h-20 w-20 sm:h-24 sm:w-24 [filter:drop-shadow(0_10px_30px_rgba(59,130,246,0.25))]"
                   />
                 </div>
               </div>
@@ -153,19 +153,19 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             </div>
           </div>
 
-          <h1 className="mt-8 text-4xl font-semibold tracking-tight">
+          <h1 className="mt-6 text-3xl font-semibold tracking-tight sm:mt-8 sm:text-4xl">
             AI powered transparency
             <span className="text-[var(--muted)]"> for the next generation of insurance agents</span>.
           </h1>
 
           <p className="mt-4 max-w-md text-sm text-[var(--muted)]">
-            A virtual call center that helps you qualify faster, stay compliant, and transfer smoothly to licensed agents.
+            Simple access to Upline AI Agent leads, logins, and delivery details in one place.
           </p>
 
           <div className="mt-8 rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-5">
-            <div className="text-xs font-semibold tracking-wide text-[var(--muted-2)]">Agent Portal Access</div>
-            <div className="mt-2 text-sm text-[var(--foreground)]">Sign in to enter the lead purchase portal, buyer workspace, and calling tools.</div>
-            <div className="mt-2 text-xs text-[var(--muted-2)]">New life agents should be able to request access, complete a short vetting form, and wait for admin approval before buying leads.</div>
+            <div className="text-xs font-semibold tracking-wide text-[var(--muted-2)]">Quick access</div>
+            <div className="mt-2 text-sm text-[var(--foreground)]">Sign in to view lead options, account access, and delivery details.</div>
+            <div className="mt-2 text-xs text-[var(--muted-2)]">New buyers can request access and get approved before ordering leads.</div>
           </div>
         </section>
 
@@ -173,8 +173,8 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
           <div className="rounded-3xl border border-[var(--border-strong)] bg-[color:rgba(8,15,30,0.78)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-[var(--foreground)]">Agent Login</div>
-                <div className="mt-1 text-xs text-[var(--muted-2)]">Secure access for EN/ES agents.</div>
+                <div className="text-sm font-semibold text-[var(--foreground)]">Login</div>
+                <div className="mt-1 text-xs text-[var(--muted-2)]">Secure access for lead buyers.</div>
               </div>
               <div className="h-9 w-9 rounded-full bg-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.22)]" />
             </div>
@@ -214,19 +214,19 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
 
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200/80">Need access?</div>
-              <div className="mt-2 text-sm text-[var(--foreground)]">Create your agent account and submit your details for approval.</div>
+              <div className="mt-2 text-sm text-[var(--foreground)]">Create your account and submit your details for approval.</div>
               <button
                 type="button"
                 className="mt-4 w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
               >
                 Create My Agent Account
               </button>
-              <div className="mt-3 text-xs text-[var(--muted-2)]">Access stays pending until approved from the master admin account.</div>
+              <div className="mt-3 text-xs text-[var(--muted-2)]">Access stays pending until approved.</div>
             </div>
           </div>
 
           <div className="mt-4 text-center text-[11px] text-[var(--muted-2)]/90">
-            © {new Date().getFullYear()} UplineAgent • Internal use
+            © {new Date().getFullYear()} UplineAgent
           </div>
         </section>
       </section>
@@ -279,10 +279,10 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Core solutions</div>
-                <h3 className="mt-3 max-w-3xl text-3xl font-semibold text-white">Three clear ways agents can work with Upline Agent AI.</h3>
+                <h3 className="mt-3 max-w-3xl text-3xl font-semibold text-white">Three simple ways to buy and receive leads.</h3>
               </div>
               <p className="max-w-2xl text-sm text-[var(--muted)]">
-                The business is built around inbound calls, outbound final expense lead generation, and automation-backed campaign management that keeps lead cost low and volume scalable.
+                Choose inbound calls, outbound leads, or managed campaigns based on how you want to grow.
               </p>
             </div>
 
@@ -336,7 +336,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English Leads</div>
-                  <h4 className="mt-3 text-2xl font-semibold text-white">Lead buying for English-speaking agents and teams.</h4>
+                  <h4 className="mt-3 text-2xl font-semibold text-white">English lead options for local or telesales buyers.</h4>
                 </div>
                 <div className="rounded-full border border-blue-300/20 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-100">English</div>
               </div>
@@ -364,7 +364,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Leads en Español</div>
-                  <h4 className="mt-3 text-2xl font-semibold text-white">Lead buying for Spanish-speaking agents and bilingual teams.</h4>
+                  <h4 className="mt-3 text-2xl font-semibold text-white">Spanish lead options for local or telesales buyers.</h4>
                 </div>
                 <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-100">Español</div>
               </div>
@@ -392,7 +392,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
           <div className="mt-16 rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-8 shadow-[0_22px_55px_rgba(0,0,0,0.28)]">
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Lead delivery examples for local and telesales agents</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/80">Lead delivery examples</div>
                 <h3 className="mt-3 text-3xl font-semibold text-white">See exactly how leads are delivered for each lead type.</h3>
               </div>
               <p className="max-w-2xl text-sm text-[var(--muted)]">
@@ -507,12 +507,12 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                   <div className="text-2xl font-semibold text-white">2</div>
                   <h4 className="mt-3 text-lg font-semibold text-white">Shared Google Sheet is created</h4>
-                  <p className="mt-2 text-sm text-[var(--muted)]">We share a Google Sheet with the agent’s Gmail so leads can be viewed in real time as they come in.</p>
+                  <p className="mt-2 text-sm text-[var(--muted)]">We share a Google Sheet so leads can be viewed in real time as they come in.</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                   <div className="text-2xl font-semibold text-white">3</div>
                   <h4 className="mt-3 text-lg font-semibold text-white">Automations are connected</h4>
-                  <p className="mt-2 text-sm text-[var(--muted)]">Lead delivery can be connected to text or SMS, email, Google Sheets, and optionally the agent’s CRM.</p>
+                  <p className="mt-2 text-sm text-[var(--muted)]">Lead delivery can be connected to text or SMS, email, Google Sheets, and optionally your CRM.</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
                   <div className="text-2xl font-semibold text-white">4</div>
