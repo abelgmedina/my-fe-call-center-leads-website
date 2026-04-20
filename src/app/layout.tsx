@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "My FE Call Center Leads Website",
-  description: "Final expense call center leads and agent portal",
+  title: "Upline AI Agent",
+  description: "Upline AI Agent lead portal and login experience",
 };
 
 import { ThemeInitScript } from '@/components/theme';
