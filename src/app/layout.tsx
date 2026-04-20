@@ -13,8 +13,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://uplineagent.com"),
   title: "Upline AI Agent",
   description: "Upline AI Agent lead portal and login experience",
+  openGraph: {
+    title: "Upline AI Agent",
+    description: "Upline AI Agent lead portal and login experience",
+    url: "https://uplineagent.com",
+    siteName: "Upline AI Agent",
+    images: [
+      {
+        url: "/brand/uai-logo.png",
+        width: 512,
+        height: 512,
+        alt: "Upline AI Agent",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Upline AI Agent",
+    description: "Upline AI Agent lead portal and login experience",
+    images: ["/brand/uai-logo.png"],
+  },
+  icons: {
+    icon: "/brand/uai-logo.png",
+    shortcut: "/brand/uai-logo.png",
+    apple: "/brand/uai-logo.png",
+  },
 };
 
 import { ThemeInitScript } from '@/components/theme';
