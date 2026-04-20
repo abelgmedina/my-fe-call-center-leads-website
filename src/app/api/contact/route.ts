@@ -3,7 +3,6 @@ import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +19,8 @@ export async function POST(req: Request) {
     if (!process.env.RESEND_API_KEY) {
       return NextResponse.json({ ok: false, error: 'Missing RESEND_API_KEY' }, { status: 500 });
     }
+
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     await resend.emails.send({
       from: 'UplineAgent Contact <onboarding@resend.dev>',
