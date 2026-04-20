@@ -345,7 +345,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                 <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English Local</div>
                   <h5 className="mt-3 text-xl font-semibold text-white">Local field leads</h5>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For agents working a specific city, county, or local radius who want exclusive local final expense opportunities.</p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For local lead buyers who want exclusive final expense opportunities in a specific city, county, or target area.</p>
                   <div className="mt-5 text-3xl font-semibold text-white">$20-$30<span className="text-base text-[var(--muted)]"> / lead</span></div>
                   <div className="mt-2 text-sm text-[var(--muted)]">Depending on area, population size, and market difficulty.</div>
                 </article>
@@ -353,7 +353,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                 <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/80">English Telesales</div>
                   <h5 className="mt-3 text-xl font-semibold text-white">Telesales lead buying</h5>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For remote agents and call teams buying final expense leads by state or broader telesales territory.</p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For telesales lead buyers who want final expense leads by state or across a broader calling territory.</p>
                   <div className="mt-5 text-3xl font-semibold text-white">$15-$25<span className="text-base text-[var(--muted)]"> / lead</span></div>
                   <div className="mt-2 text-sm text-[var(--muted)]">Depending on state mix, targeting depth, and custom setup.</div>
                 </article>
@@ -373,7 +373,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                 <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Spanish Telesales</div>
                   <h5 className="mt-3 text-xl font-semibold text-white">Telesales leads en español</h5>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For bilingual agents and Spanish-speaking telesales teams buying leads across wider calling territories.</p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For Spanish telesales lead buyers who want leads across wider calling territories.</p>
                   <div className="mt-5 text-3xl font-semibold text-white">$20-$25<span className="text-base text-[var(--muted)]"> / lead</span></div>
                   <div className="mt-2 text-sm text-[var(--muted)]">Simple pricing range based on state mix and customization.</div>
                 </article>
@@ -381,7 +381,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
                 <article className="rounded-3xl border border-white/10 bg-black/20 p-6">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200/80">Spanish Local</div>
                   <h5 className="mt-3 text-xl font-semibold text-white">Local leads en español</h5>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For local field agents who want Spanish-speaking final expense leads in targeted areas with stronger cultural fit.</p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">For Spanish local lead buyers who want final expense leads in targeted areas.</p>
                   <div className="mt-5 text-3xl font-semibold text-white">$25-$35<span className="text-base text-[var(--muted)]"> / lead</span></div>
                   <div className="mt-2 text-sm text-[var(--muted)]">Depending on area, availability, and local market setup.</div>
                 </article>
