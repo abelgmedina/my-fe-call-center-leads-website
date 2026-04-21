@@ -215,12 +215,12 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200/80">Need access?</div>
               <div className="mt-2 text-sm text-[var(--foreground)]">Create your account and submit your details for approval.</div>
-              <button
-                type="button"
-                className="mt-4 w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
+              <a
+                href="/agent/signup"
+                className="mt-4 block w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-center text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
               >
                 Create My Agent Account
-              </button>
+              </a>
               <div className="mt-3 text-xs text-[var(--muted-2)]">Access stays pending until approved.</div>
             </div>
           </div>

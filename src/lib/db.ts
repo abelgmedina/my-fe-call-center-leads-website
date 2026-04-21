@@ -132,6 +132,19 @@ db.exec(`
     created_at integer not null,
     notified integer not null default 0
   );
+
+  create table if not exists agent_access_requests (
+    id integer primary key autoincrement,
+    full_name text not null,
+    email text not null,
+    phone text not null,
+    npn text,
+    agency_name text,
+    notes text,
+    status text not null default 'pending',
+    created_at integer not null,
+    updated_at integer not null
+  );
 `);
 
 // Lightweight migrations for existing local DBs.
