@@ -4,7 +4,14 @@ import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 
+function getJsonErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return 'Failed to submit request.';
+}
+
 export async function POST(req: Request) {
+  let requestId: number | bigint | null = null;
+
   try {
     const body = (await req.json().catch(() => null)) as any;
     const full_name = String(body?.full_name || '').trim();
@@ -26,10 +33,14 @@ export async function POST(req: Request) {
       )
       .run(full_name, email, phone, npn || null, agency_name || null, notes || null, now, now);
 
+    requestId = result.lastInsertRowid;
+
+    let emailWarning: string | null = null;
+
     if (process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
+        const mailResult = await resend.emails.send({
           from: 'UplineAgent Access <onboarding@resend.dev>',
           to: ['agm@uplineagent.com'],
           replyTo: email,
@@ -42,13 +53,24 @@ export async function POST(req: Request) {
             `NPN: ${npn || '-'}\n` +
             `Agency: ${agency_name || '-'}\n` +
             `Notes: ${notes || '-'}\n` +
-            `Request ID: ${result.lastInsertRowid}`,
+            `Request ID: ${String(requestId)}`,
         });
-      } catch {}
+
+        if ((mailResult as any)?.error) {
+          emailWarning = typeof (mailResult as any).error?.message === 'string'
+            ? (mailResult as any).error.message
+            : 'Notification email failed, but the request was saved.';
+        }
+      } catch (emailError) {
+        emailWarning = getJsonErrorMessage(emailError);
+      }
     }
 
-    return NextResponse.json({ ok: true, requestId: result.lastInsertRowid });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error?.message || 'Failed to submit request.' }, { status: 500 });
+    return NextResponse.json({ ok: true, requestId: String(requestId), emailWarning });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { ok: false, error: getJsonErrorMessage(error), requestId: requestId ? String(requestId) : null },
+      { status: 500 }
+    );
   }
 }
