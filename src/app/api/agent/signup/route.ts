@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
@@ -10,8 +9,6 @@ function getJsonErrorMessage(error: unknown) {
 }
 
 export async function POST(req: Request) {
-  let requestId: number | bigint | null = null;
-
   try {
     const body = (await req.json().catch(() => null)) as any;
     const full_name = String(body?.full_name || '').trim();
@@ -25,16 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Name, email, and phone are required.' }, { status: 400 });
     }
 
-    const now = Date.now();
-    const result = db
-      .prepare(
-        `insert into agent_access_requests (full_name, email, phone, npn, agency_name, notes, status, created_at, updated_at)
-         values (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
-      )
-      .run(full_name, email, phone, npn || null, agency_name || null, notes || null, now, now);
-
-    requestId = result.lastInsertRowid;
-
+    const requestId = String(Date.now());
     let emailWarning: string | null = null;
 
     if (process.env.RESEND_API_KEY) {
@@ -53,24 +41,23 @@ export async function POST(req: Request) {
             `NPN: ${npn || '-'}\n` +
             `Agency: ${agency_name || '-'}\n` +
             `Notes: ${notes || '-'}\n` +
-            `Request ID: ${String(requestId)}`,
+            `Request ID: ${requestId}`,
         });
 
         if ((mailResult as any)?.error) {
           emailWarning = typeof (mailResult as any).error?.message === 'string'
             ? (mailResult as any).error.message
-            : 'Notification email failed, but the request was saved.';
+            : 'Notification email failed, but the request was received.';
         }
       } catch (emailError) {
         emailWarning = getJsonErrorMessage(emailError);
       }
+    } else {
+      emailWarning = 'RESEND_API_KEY is not configured, so no notification email was sent.';
     }
 
-    return NextResponse.json({ ok: true, requestId: String(requestId), emailWarning });
+    return NextResponse.json({ ok: true, requestId, emailWarning });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { ok: false, error: getJsonErrorMessage(error), requestId: requestId ? String(requestId) : null },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: getJsonErrorMessage(error) }, { status: 500 });
   }
 }
