@@ -126,13 +126,13 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
           </div>
         </div>
       </header>
-      <div className="pointer-events-none absolute inset-0">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_20%,rgba(37,99,235,0.18),transparent_55%),radial-gradient(900px_circle_at_80%_70%,rgba(59,130,246,0.08),transparent_55%)]" />
         <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] [background-size:44px_44px]" />
         <div className="absolute -top-40 left-1/2 h-[420px] w-[860px] -translate-x-1/2 rounded-full bg-blue-600/12 blur-3xl" />
       </div>
 
-      <section id="top" className="relative mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:px-6 md:grid-cols-2 md:gap-10 md:pt-10">
+      <section id="top" className="relative z-10 mx-auto grid min-h-screen max-w-6xl grid-cols-1 gap-8 px-4 pb-12 pt-8 sm:px-6 md:grid-cols-2 md:gap-10 md:pt-10">
         <section className="flex flex-col justify-center">
           <div className="inline-flex items-center gap-4 sm:gap-5">
             <div className="relative">
@@ -215,12 +215,14 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200/80">Need access?</div>
               <div className="mt-2 text-sm text-[var(--foreground)]">Create your account and submit your details for approval.</div>
-              <a
-                href="/agent/signup"
-                className="mt-4 block w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-center text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
-              >
-                Create My Agent Account
-              </a>
+              <form action="/agent/signup" className="mt-4">
+                <button
+                  type="submit"
+                  className="relative z-20 block w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-center text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
+                >
+                  Create My Agent Account
+                </button>
+              </form>
               <div className="mt-3 text-xs text-[var(--muted-2)]">Access stays pending until approved.</div>
             </div>
           </div>
