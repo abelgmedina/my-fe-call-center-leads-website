@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { sendAgentAccessRequestSms } from '@/lib/agent-access-alerts';
 import { appendAgentAccessRequestToSheet } from '@/lib/agent-access-sheets';
+import { appendAccessRequestToStore, isGitHubStoreConfigured } from '@/lib/github-store';
 
 export const runtime = 'nodejs';
 
@@ -53,48 +54,64 @@ export async function POST(req: Request) {
     let storageWarning: string | null = null;
 
     try {
-      const { db } = await import('@/lib/db');
       const now = Date.now();
-      const result = db.prepare(
-        `insert into agent_access_requests (
-          full_name, email, phone, npn, residence_state, license_state,
-          fmo, imo, agency_name, sales_model, notes, status, created_at, updated_at
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
-      ).run(
-        full_name,
-        email,
-        phone,
-        npn,
-        residence_state,
-        license_state,
-        fmo,
-        imo,
-        agency_name,
-        sales_model,
-        notes,
-        now,
-        now
-      );
-      if (result.lastInsertRowid) {
-        requestId = String(result.lastInsertRowid);
-        const submittedAt = new Date(now).toISOString();
-        try {
-          await appendAgentAccessRequestToSheet({
-            submittedAt,
-            requestId,
-            status: 'pending',
-            fullName: full_name,
-            email,
-            phone,
-            npn,
-            residenceState: residence_state,
-            agencyName: agency_name,
-            salesModel: sales_model,
-            notes,
-          });
-        } catch (sheetError) {
-          sheetWarning = getJsonErrorMessage(sheetError);
-        }
+      if (isGitHubStoreConfigured()) {
+        const request = await appendAccessRequestToStore({
+          full_name,
+          email,
+          phone,
+          npn,
+          residence_state,
+          license_state,
+          fmo,
+          imo,
+          agency_name,
+          sales_model,
+          notes,
+        });
+        requestId = String(request.id);
+      } else {
+        const { db } = await import('@/lib/db');
+        const result = db.prepare(
+          `insert into agent_access_requests (
+            full_name, email, phone, npn, residence_state, license_state,
+            fmo, imo, agency_name, sales_model, notes, status, created_at, updated_at
+          ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+        ).run(
+          full_name,
+          email,
+          phone,
+          npn,
+          residence_state,
+          license_state,
+          fmo,
+          imo,
+          agency_name,
+          sales_model,
+          notes,
+          now,
+          now
+        );
+        if (result.lastInsertRowid) requestId = String(result.lastInsertRowid);
+      }
+
+      const submittedAt = new Date(now).toISOString();
+      try {
+        await appendAgentAccessRequestToSheet({
+          submittedAt,
+          requestId,
+          status: 'pending',
+          fullName: full_name,
+          email,
+          phone,
+          npn,
+          residenceState: residence_state,
+          agencyName: agency_name,
+          salesModel: sales_model,
+          notes,
+        });
+      } catch (sheetError) {
+        sheetWarning = getJsonErrorMessage(sheetError);
       }
     } catch (storageError) {
       storageWarning = getJsonErrorMessage(storageError);

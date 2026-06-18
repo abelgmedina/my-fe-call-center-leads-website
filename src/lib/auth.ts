@@ -115,22 +115,32 @@ export async function verifyLogin(username: string, password: string) {
   const row = db
     .prepare('select username, buyer_code, role, password_hash, disabled from buyer_users where lower(username) = lower(?)')
     .get(username) as any;
-  if (!row || row.disabled) return null;
+  let buyerRow = row;
+  if (!buyerRow || buyerRow.disabled) {
+    const { findBuyerInStore } = await import('@/lib/github-store');
+    buyerRow = await findBuyerInStore(username);
+  }
+  if (!buyerRow || buyerRow.disabled) return null;
 
-  const ok = verifyPassword(password, row.password_hash);
+  const ok = verifyPassword(password, buyerRow.password_hash);
   if (!ok) return null;
 
   // update last_login
   try {
-    db.prepare('update buyer_users set last_login_at = ?, updated_at = ? where username = ?').run(Date.now(), Date.now(), row.username);
+    if (row?.username) {
+      db.prepare('update buyer_users set last_login_at = ?, updated_at = ? where username = ?').run(Date.now(), Date.now(), row.username);
+    } else {
+      const { markBuyerLoginInStore } = await import('@/lib/github-store');
+      await markBuyerLoginInStore(buyerRow.username);
+    }
   } catch {}
 
   return {
     kind: 'buyer' as const,
     buyer: {
-      username: row.username,
-      buyer_code: row.buyer_code,
-      buyer_role: row.role as 'buyer_admin' | 'buyer_agent',
+      username: buyerRow.username,
+      buyer_code: buyerRow.buyer_code,
+      buyer_role: buyerRow.role as 'buyer_admin' | 'buyer_agent',
     },
   };
 }

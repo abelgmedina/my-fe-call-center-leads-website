@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAgent } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { leadProductMap } from '@/lib/lead-products';
+import { appendLeadOrderToStore, isGitHubStoreConfigured } from '@/lib/github-store';
 
 export const runtime = 'nodejs';
 
@@ -71,29 +72,47 @@ export async function POST(req: Request) {
     origin,
   });
 
-  const result = db
-    .prepare(
-      `insert into lead_orders (buyer_code, username, product_id, product_name, quantity, amount_cents, status, stripe_session_id, stripe_checkout_url, created_at, updated_at)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      me.buyer_code,
-      me.username,
-      id,
-      productName,
-      product.quantity,
-      product.amountCents,
-      checkout ? 'checkout_created' : 'stripe_not_configured',
-      checkout?.id || null,
-      checkout?.url || null,
-      now,
-      now
-    );
+  const status = checkout ? 'checkout_created' : 'stripe_not_configured';
+  let orderId: number | bigint;
+  if (isGitHubStoreConfigured()) {
+    const order = await appendLeadOrderToStore({
+      buyer_code: me.buyer_code,
+      username: me.username,
+      product_id: id,
+      product_name: productName,
+      quantity: product.quantity,
+      amount_cents: product.amountCents,
+      status,
+      stripe_session_id: checkout?.id || null,
+      stripe_checkout_url: checkout?.url || null,
+    });
+    orderId = order.id;
+  } else {
+    const result = db
+      .prepare(
+        `insert into lead_orders (buyer_code, username, product_id, product_name, quantity, amount_cents, status, stripe_session_id, stripe_checkout_url, created_at, updated_at)
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        me.buyer_code,
+        me.username,
+        id,
+        productName,
+        product.quantity,
+        product.amountCents,
+        status,
+        checkout?.id || null,
+        checkout?.url || null,
+        now,
+        now
+      );
+    orderId = result.lastInsertRowid;
+  }
 
   return NextResponse.json({
     ok: true,
     mode: checkout ? 'stripe_checkout' : 'stripe_not_configured',
-    order_id: result.lastInsertRowid,
+    order_id: Number(orderId),
     checkout_url: checkout?.url || null,
     message: checkout ? null : 'STRIPE_SECRET_KEY is not configured. Order was saved for manual follow-up.',
   });
