@@ -1,42 +1,7 @@
 {
   "nextRequestId": 3,
   "nextOrderId": 2,
-  "requests": [
-    {
-      "full_name": "Onboard Smoke Buyer 1781801990",
-      "email": "onboard-smoke-1781801990@uplineagent.test",
-      "phone": "5555550198",
-      "npn": "887766",
-      "residence_state": "CA",
-      "license_state": "CA",
-      "fmo": "",
-      "imo": "",
-      "agency_name": "Smoke Test Agency",
-      "sales_model": "Final expense telesales",
-      "notes": "Onboarding smoke test",
-      "id": 2,
-      "status": "approved",
-      "created_at": 1781801991778,
-      "updated_at": 1781801993910,
-      "decision_notes": "Onboarding smoke approved",
-      "decided_at": 1781801993910,
-      "decided_by": "abel",
-      "buyer_username": "onboard-smoke-1781801990@uplineagent.test",
-      "buyer_code": "buyer_smoke_test_agency"
-    }
-  ],
-  "buyers": [
-    {
-      "username": "onboard-smoke-1781801990@uplineagent.test",
-      "buyer_code": "buyer_smoke_test_agency",
-      "role": "buyer_agent",
-      "password_hash": "scrypt$16384$8$1$lZ3AZRWXsULkzpxmQMu1nw==$W8UqtniujBAR1/6nlzUBrjnitYqR4MQxBlnBCU0mE8Y=",
-      "disabled": false,
-      "phone": "5555550198",
-      "created_at": 1781801993910,
-      "updated_at": 1781801995087,
-      "last_login_at": 1781801995087
-    }
-  ],
+  "requests": [],
+  "buyers": [],
   "orders": []
 }
