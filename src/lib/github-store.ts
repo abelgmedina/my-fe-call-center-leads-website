@@ -27,6 +27,20 @@ type StoreBuyer = {
   role: 'buyer_admin' | 'buyer_agent';
   password_hash: string;
   disabled: boolean;
+  phone?: string;
+  policy_reviews?: {
+    terms?: number;
+    privacy?: number;
+    lead_replacement?: number;
+  };
+  policies_agreed_at?: number;
+  agreement_ip?: string;
+  email_code_hash?: string;
+  email_code_expires_at?: number;
+  email_verified_at?: number;
+  phone_code_hash?: string;
+  phone_code_expires_at?: number;
+  phone_verified_at?: number;
   created_at: number;
   updated_at: number;
   last_login_at?: number;
@@ -211,6 +225,7 @@ export async function decideAccessRequestInStore(params: {
         role: 'buyer_agent',
         password_hash: params.passwordHash,
         disabled: false,
+        phone: request.phone,
         created_at: now,
         updated_at: now,
       });
@@ -234,6 +249,32 @@ export async function markBuyerLoginInStore(username: string) {
     }
     return buyer || null;
   });
+}
+
+export async function updateBuyerInStore(username: string, updater: (buyer: StoreBuyer) => void) {
+  return mutateStore('Update buyer onboarding', (store) => {
+    const buyer = store.buyers.find((row) => row.username.toLowerCase() === username.toLowerCase() && !row.disabled);
+    if (!buyer) throw new Error('buyer not found');
+    updater(buyer);
+    buyer.updated_at = Date.now();
+    return buyer;
+  });
+}
+
+export async function getBuyerOnboardingFromStore(username: string) {
+  const buyer = await findBuyerInStore(username);
+  if (!buyer) return null;
+  return {
+    username: buyer.username,
+    buyer_code: buyer.buyer_code,
+    phone: buyer.phone || '',
+    policy_reviews: buyer.policy_reviews || {},
+    policies_agreed_at: buyer.policies_agreed_at || null,
+    agreement_ip: buyer.agreement_ip || null,
+    email_verified_at: buyer.email_verified_at || null,
+    phone_verified_at: buyer.phone_verified_at || null,
+    complete: !!(buyer.policies_agreed_at && buyer.email_verified_at && buyer.phone_verified_at),
+  };
 }
 
 export async function appendLeadOrderToStore(input: Omit<StoreOrder, 'id' | 'created_at' | 'updated_at'>) {
