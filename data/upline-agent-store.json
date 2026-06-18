@@ -34,12 +34,19 @@
       "disabled": false,
       "phone": "8303183675",
       "created_at": 1781802624837,
-      "updated_at": 1781803820060,
+      "updated_at": 1781804593234,
       "last_login_at": 1781803620513,
       "email_code_hash": "scrypt$16384$8$1$1uVFtJR3sLj4rUtPF9ZrOA==$WQ7OzpglOTbBvbUhVJ0HT0IboOc6m7TvuGTUnoWPgEM=",
       "email_code_expires_at": 1781804409498,
       "phone_code_hash": "scrypt$16384$8$1$2ru8/W/oeBJzcBlGxD4YZA==$mpgarrs85SOqZlnxVlKPUMjy53GqUmLfUkDudsDZRhU=",
-      "phone_code_expires_at": 1781804420060
+      "phone_code_expires_at": 1781804420060,
+      "policy_reviews": {
+        "terms": 1781804593234,
+        "privacy": 1781804593234,
+        "lead_replacement": 1781804593234
+      },
+      "policies_agreed_at": 1781804593234,
+      "agreement_ip": "96.78.148.89"
     }
   ],
   "orders": []
