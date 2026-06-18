@@ -1,6 +1,6 @@
 {
   "nextRequestId": 2,
-  "nextOrderId": 1,
+  "nextOrderId": 2,
   "requests": [
     {
       "full_name": "Prod Smoke Buyer 1781800838",
@@ -37,5 +37,20 @@
       "last_login_at": 1781800842795
     }
   ],
-  "orders": []
+  "orders": [
+    {
+      "buyer_code": "buyer_smoke_test_agency",
+      "username": "prod-smoke-1781800838@uplineagent.test",
+      "product_id": "english_telesales_30",
+      "product_name": "English Telesales - 30 leads",
+      "quantity": 30,
+      "amount_cents": 60000,
+      "status": "stripe_not_configured",
+      "stripe_session_id": null,
+      "stripe_checkout_url": null,
+      "id": 1,
+      "created_at": 1781800844443,
+      "updated_at": 1781800844443
+    }
+  ]
 }
