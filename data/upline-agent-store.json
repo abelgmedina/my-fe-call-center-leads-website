@@ -1,7 +1,25 @@
 {
-  "nextRequestId": 2,
+  "nextRequestId": 3,
   "nextOrderId": 2,
-  "requests": [],
+  "requests": [
+    {
+      "full_name": "Onboard Smoke Buyer 1781801990",
+      "email": "onboard-smoke-1781801990@uplineagent.test",
+      "phone": "5555550198",
+      "npn": "887766",
+      "residence_state": "CA",
+      "license_state": "CA",
+      "fmo": "",
+      "imo": "",
+      "agency_name": "Smoke Test Agency",
+      "sales_model": "Final expense telesales",
+      "notes": "Onboarding smoke test",
+      "id": 2,
+      "status": "pending",
+      "created_at": 1781801991778,
+      "updated_at": 1781801991778
+    }
+  ],
   "buyers": [],
   "orders": []
 }
