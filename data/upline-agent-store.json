@@ -1,7 +1,25 @@
 {
-  "nextRequestId": 3,
+  "nextRequestId": 4,
   "nextOrderId": 2,
-  "requests": [],
+  "requests": [
+    {
+      "full_name": "Review Buyer",
+      "email": "review-buyer@uplineagent.test",
+      "phone": "5555550123",
+      "npn": "123456",
+      "residence_state": "CA",
+      "license_state": "CA",
+      "fmo": "",
+      "imo": "",
+      "agency_name": "Review Agency",
+      "sales_model": "Final expense telesales",
+      "notes": "Temporary review account for Abel",
+      "id": 3,
+      "status": "pending",
+      "created_at": 1781802313158,
+      "updated_at": 1781802313158
+    }
+  ],
   "buyers": [],
   "orders": []
 }
