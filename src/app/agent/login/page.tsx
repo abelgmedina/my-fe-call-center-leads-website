@@ -60,7 +60,8 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       const rt = searchParams?.returnTo;
       window.location.href = rt ? rt : data?.agent?.role === 'buyer' ? '/buyer/marketplace' : '/ops/lead-purchase';

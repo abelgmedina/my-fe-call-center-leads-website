@@ -108,18 +108,37 @@ export async function verifyLogin(username: string, password: string) {
     return ok ? ({ kind: 'env' as const, agent } ) : null;
   }
 
-  // 2) Buyer DB users
-  const { db } = await import('@/lib/db');
+  // 2) Buyer users in the durable production store
   const { verifyPassword } = await import('@/lib/passwords');
+  const { findBuyerInStore, isGitHubStoreConfigured, markBuyerLoginInStore } = await import('@/lib/github-store');
 
+  if (isGitHubStoreConfigured()) {
+    const buyerRow = await findBuyerInStore(username);
+    if (!buyerRow || buyerRow.disabled) return null;
+
+    const ok = verifyPassword(password, buyerRow.password_hash);
+    if (!ok) return null;
+
+    try {
+      await markBuyerLoginInStore(buyerRow.username);
+    } catch {}
+
+    return {
+      kind: 'buyer' as const,
+      buyer: {
+        username: buyerRow.username,
+        buyer_code: buyerRow.buyer_code,
+        buyer_role: buyerRow.role as 'buyer_admin' | 'buyer_agent',
+      },
+    };
+  }
+
+  // 3) Buyer DB users for local/dev mode
+  const { db } = await import('@/lib/db');
   const row = db
     .prepare('select username, buyer_code, role, password_hash, disabled from buyer_users where lower(username) = lower(?)')
     .get(username) as any;
-  let buyerRow = row;
-  if (!buyerRow || buyerRow.disabled) {
-    const { findBuyerInStore } = await import('@/lib/github-store');
-    buyerRow = await findBuyerInStore(username);
-  }
+  const buyerRow = row;
   if (!buyerRow || buyerRow.disabled) return null;
 
   const ok = verifyPassword(password, buyerRow.password_hash);
@@ -127,12 +146,7 @@ export async function verifyLogin(username: string, password: string) {
 
   // update last_login
   try {
-    if (row?.username) {
-      db.prepare('update buyer_users set last_login_at = ?, updated_at = ? where username = ?').run(Date.now(), Date.now(), row.username);
-    } else {
-      const { markBuyerLoginInStore } = await import('@/lib/github-store');
-      await markBuyerLoginInStore(buyerRow.username);
-    }
+    db.prepare('update buyer_users set last_login_at = ?, updated_at = ? where username = ?').run(Date.now(), Date.now(), row.username);
   } catch {}
 
   return {
