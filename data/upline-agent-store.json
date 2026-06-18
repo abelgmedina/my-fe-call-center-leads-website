@@ -15,11 +15,26 @@
       "sales_model": "Final expense telesales",
       "notes": "Production end-to-end smoke test",
       "id": 1,
-      "status": "pending",
+      "status": "approved",
       "created_at": 1781800839001,
-      "updated_at": 1781800839001
+      "updated_at": 1781800841526,
+      "decision_notes": "Production smoke approved",
+      "decided_at": 1781800841526,
+      "decided_by": "abel",
+      "buyer_username": "prod-smoke-1781800838@uplineagent.test",
+      "buyer_code": "buyer_smoke_test_agency"
     }
   ],
-  "buyers": [],
+  "buyers": [
+    {
+      "username": "prod-smoke-1781800838@uplineagent.test",
+      "buyer_code": "buyer_smoke_test_agency",
+      "role": "buyer_agent",
+      "password_hash": "scrypt$16384$8$1$q9GPDe9h8jYNLkqtoeMXCw==$pflf++Nw7bFtvOJDLOQy78nTBjqZouGr7K5cxW4VuD8=",
+      "disabled": false,
+      "created_at": 1781800841526,
+      "updated_at": 1781800841526
+    }
+  ],
   "orders": []
 }
