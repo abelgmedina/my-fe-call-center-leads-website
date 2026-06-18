@@ -15,11 +15,27 @@
       "sales_model": "Final expense telesales",
       "notes": "Temporary review account for Abel",
       "id": 3,
-      "status": "pending",
+      "status": "approved",
       "created_at": 1781802313158,
-      "updated_at": 1781802313158
+      "updated_at": 1781802624837,
+      "decision_notes": "Temporary approved buyer for Abel review",
+      "decided_at": 1781802624837,
+      "decided_by": "abel",
+      "buyer_username": "review-buyer@uplineagent.test",
+      "buyer_code": "buyer_review_agency"
     }
   ],
-  "buyers": [],
+  "buyers": [
+    {
+      "username": "review-buyer@uplineagent.test",
+      "buyer_code": "buyer_review_agency",
+      "role": "buyer_agent",
+      "password_hash": "scrypt$16384$8$1$wKhqq7QQHPEN4/PQvTBQSg==$ESFduGNNlndooeY/8NCMGo3jp3+z8N0oYittg7193IM=",
+      "disabled": false,
+      "phone": "5555550123",
+      "created_at": 1781802624837,
+      "updated_at": 1781802624837
+    }
+  ],
   "orders": []
 }
