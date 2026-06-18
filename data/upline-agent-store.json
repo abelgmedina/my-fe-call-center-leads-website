@@ -1,0 +1,25 @@
+{
+  "nextRequestId": 2,
+  "nextOrderId": 1,
+  "requests": [
+    {
+      "full_name": "Prod Smoke Buyer 1781800838",
+      "email": "prod-smoke-1781800838@uplineagent.test",
+      "phone": "5555550199",
+      "npn": "998877",
+      "residence_state": "CA",
+      "license_state": "CA",
+      "fmo": "",
+      "imo": "",
+      "agency_name": "Smoke Test Agency",
+      "sales_model": "Final expense telesales",
+      "notes": "Production end-to-end smoke test",
+      "id": 1,
+      "status": "pending",
+      "created_at": 1781800839001,
+      "updated_at": 1781800839001
+    }
+  ],
+  "buyers": [],
+  "orders": []
+}
