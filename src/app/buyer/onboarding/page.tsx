@@ -128,6 +128,22 @@ export default function BuyerOnboardingPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const node = scrollRef.current;
+      if (!node) return;
+
+      node.scrollTop = 0;
+      if (node.scrollHeight <= node.clientHeight + 12) {
+        setReviewed((prev) => ({ ...prev, [open]: true }));
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   function onScroll() {
     const node = scrollRef.current;
     if (!node || !open) return;
