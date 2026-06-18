@@ -70,66 +70,70 @@ export async function POST(req: Request) {
   if (!['approved', 'denied'].includes(decision)) return NextResponse.json({ ok: false, error: 'decision must be approved or denied' }, { status: 400 });
 
   if (isGitHubStoreConfigured()) {
-    if (decision === 'denied') {
-      await decideAccessRequestInStore({
+    try {
+      if (decision === 'denied') {
+        await decideAccessRequestInStore({
+          id,
+          decision: 'denied',
+          decisionNotes,
+          decidedBy: me.id,
+        });
+
+        let sheetWarning: string | null = null;
+        try {
+          await updateAgentAccessRequestDecisionInSheet({
+            requestId: String(id),
+            status: 'denied',
+            decisionNotes,
+          });
+        } catch (sheetError) {
+          sheetWarning = getJsonErrorMessage(sheetError);
+        }
+
+        return NextResponse.json({ ok: true, status: 'denied', sheetWarning });
+      }
+
+      if (!tempPassword || tempPassword.length < 8) {
+        return NextResponse.json({ ok: false, error: 'temporary password must be at least 8 characters' }, { status: 400 });
+      }
+
+      const requests = await listAccessRequestsFromStore();
+      const request = requests.find((row) => row.id === id) as any;
+      if (!request) return NextResponse.json({ ok: false, error: 'request not found' }, { status: 404 });
+
+      const username = String(request.email || '').trim().toLowerCase();
+      if (!username) return NextResponse.json({ ok: false, error: 'request email missing' }, { status: 400 });
+
+      let buyerCode = buyerCodeFrom(request.agency_name || request.full_name || username);
+      const buyer = await decideAccessRequestInStore({
         id,
-        decision: 'denied',
+        decision: 'approved',
         decisionNotes,
         decidedBy: me.id,
+        buyerUsername: username,
+        buyerCode,
+        passwordHash: hashPassword(tempPassword),
       });
+
+      if (buyer.buyer_code) buyerCode = buyer.buyer_code;
 
       let sheetWarning: string | null = null;
       try {
         await updateAgentAccessRequestDecisionInSheet({
           requestId: String(id),
-          status: 'denied',
+          status: 'approved',
           decisionNotes,
+          buyerUsername: username,
+          buyerCode,
         });
       } catch (sheetError) {
         sheetWarning = getJsonErrorMessage(sheetError);
       }
 
-      return NextResponse.json({ ok: true, status: 'denied', sheetWarning });
+      return NextResponse.json({ ok: true, status: 'approved', username, buyer_code: buyerCode, sheetWarning });
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: getJsonErrorMessage(error) }, { status: 500 });
     }
-
-    if (!tempPassword || tempPassword.length < 8) {
-      return NextResponse.json({ ok: false, error: 'temporary password must be at least 8 characters' }, { status: 400 });
-    }
-
-    const requests = await listAccessRequestsFromStore();
-    const request = requests.find((row) => row.id === id) as any;
-    if (!request) return NextResponse.json({ ok: false, error: 'request not found' }, { status: 404 });
-
-    const username = String(request.email || '').trim().toLowerCase();
-    if (!username) return NextResponse.json({ ok: false, error: 'request email missing' }, { status: 400 });
-
-    let buyerCode = buyerCodeFrom(request.agency_name || request.full_name || username);
-    const buyer = await decideAccessRequestInStore({
-      id,
-      decision: 'approved',
-      decisionNotes,
-      decidedBy: me.id,
-      buyerUsername: username,
-      buyerCode,
-      passwordHash: hashPassword(tempPassword),
-    });
-
-    if (buyer.buyer_code) buyerCode = buyer.buyer_code;
-
-    let sheetWarning: string | null = null;
-    try {
-      await updateAgentAccessRequestDecisionInSheet({
-        requestId: String(id),
-        status: 'approved',
-        decisionNotes,
-        buyerUsername: username,
-        buyerCode,
-      });
-    } catch (sheetError) {
-      sheetWarning = getJsonErrorMessage(sheetError);
-    }
-
-    return NextResponse.json({ ok: true, status: 'approved', username, buyer_code: buyerCode, sheetWarning });
   }
 
   const request = db.prepare('select * from agent_access_requests where id = ?').get(id) as any;
