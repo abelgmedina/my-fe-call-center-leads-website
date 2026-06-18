@@ -34,8 +34,10 @@
       "disabled": false,
       "phone": "5555550123",
       "created_at": 1781802624837,
-      "updated_at": 1781803620513,
-      "last_login_at": 1781803620513
+      "updated_at": 1781803671679,
+      "last_login_at": 1781803620513,
+      "email_code_hash": "scrypt$16384$8$1$NRknFKxS+8M62+w4mm292w==$KRKykNsWOGZit4rVkFF/Jao2AmGl0FH0iqGEdxC519w=",
+      "email_code_expires_at": 1781804271679
     }
   ],
   "orders": []
