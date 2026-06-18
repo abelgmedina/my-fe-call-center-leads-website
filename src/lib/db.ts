@@ -139,9 +139,46 @@ db.exec(`
     email text not null,
     phone text not null,
     npn text,
+    residence_state text,
+    license_state text,
+    fmo text,
+    imo text,
     agency_name text,
+    sales_model text,
     notes text,
     status text not null default 'pending',
+    decision_notes text,
+    decided_at integer,
+    decided_by text,
+    buyer_username text,
+    buyer_code text,
+    created_at integer not null,
+    updated_at integer not null
+  );
+
+  create table if not exists buyer_users (
+    username text primary key,
+    buyer_code text not null,
+    role text not null,
+    password_hash text not null,
+    disabled integer not null default 0,
+    created_at integer not null,
+    updated_at integer not null,
+    last_login_at integer
+  );
+
+  create table if not exists lead_orders (
+    id integer primary key autoincrement,
+    buyer_code text not null,
+    username text not null,
+    product_id text not null,
+    product_name text not null,
+    quantity integer not null,
+    amount_cents integer not null,
+    status text not null,
+    stripe_session_id text,
+    stripe_checkout_url text,
+    notes text,
     created_at integer not null,
     updated_at integer not null
   );
@@ -156,6 +193,17 @@ try { db.prepare('alter table call_events add column recording_status text').run
 try { db.prepare('alter table call_events add column recording_url text').run(); } catch {}
 // AI intake schema additions
 try { db.prepare('alter table ai_intake add column age text').run(); } catch {}
+// Agent access request schema additions
+try { db.prepare('alter table agent_access_requests add column residence_state text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column license_state text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column fmo text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column imo text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column sales_model text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column decision_notes text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column decided_at integer').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column decided_by text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column buyer_username text').run(); } catch {}
+try { db.prepare('alter table agent_access_requests add column buyer_code text').run(); } catch {}
 
 // Migrate legacy single-row schema if it exists.
 try {

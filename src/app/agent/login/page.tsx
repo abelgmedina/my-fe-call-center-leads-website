@@ -63,7 +63,7 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       const rt = searchParams?.returnTo;
-      window.location.href = rt ? rt : '/ops/lead-purchase';
+      window.location.href = rt ? rt : data?.agent?.role === 'buyer' ? '/buyer/marketplace' : '/ops/lead-purchase';
     } catch (e: any) {
       setMsg(e?.message || String(e));
     } finally {

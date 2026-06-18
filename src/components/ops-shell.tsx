@@ -28,6 +28,7 @@ export function OpsShell({
             <Nav href="/ops" label="Dashboard" />
             <Nav href="/ops/pipeline" label="Pipeline" />
             <Nav href="/ops/agents" label="Agents" />
+            <Nav href="/ops/agent-approvals" label="Agent Approvals" />
             <Nav href="/ops/lead-purchase" label="Lead Purchase" />
             <Nav href="/ops/admin" label="Ops Admin" />
             <div className="mt-2 border-t border-[var(--border)] pt-2">

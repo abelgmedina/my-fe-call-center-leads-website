@@ -2,13 +2,20 @@
 
 import { useState } from 'react';
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return String(error);
+}
+
 export default function AgentSignupPage() {
   const [form, setForm] = useState({
     full_name: '',
     email: '',
     phone: '',
     npn: '',
+    residence_state: '',
     agency_name: '',
+    sales_model: '',
     notes: '',
   });
   const [loading, setLoading] = useState(false);
@@ -32,11 +39,20 @@ export default function AgentSignupPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setOk(true);
-      setForm({ full_name: '', email: '', phone: '', npn: '', agency_name: '', notes: '' });
+      setForm({
+        full_name: '',
+        email: '',
+        phone: '',
+        npn: '',
+        residence_state: '',
+        agency_name: '',
+        sales_model: '',
+        notes: '',
+      });
       setMsg('Request submitted. We will review your info and send your CRM login after approval.');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setOk(false);
-      setMsg(e?.message || String(e));
+      setMsg(errorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -51,7 +67,7 @@ export default function AgentSignupPage() {
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300/80">Agent approval request</div>
           <h1 className="mt-3 text-3xl font-semibold text-white">Create your Upline Agent account</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Submit your information so we can vet your agency and approve access to the CRM, leads, inbound calls screen, and power dialer.
+            Thank you for your interest in Upline Agent AI. We review each agent request to make sure our platform, leads, and tools are the right fit for your business before giving access.
           </p>
 
           <form onSubmit={submit} className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -72,17 +88,41 @@ export default function AgentSignupPage() {
 
             <label className="block">
               <div className="text-xs font-semibold text-[var(--muted-2)]">NPN</div>
-              <input className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.npn} onChange={(e) => update('npn', e.target.value)} />
+              <input className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.npn} onChange={(e) => update('npn', e.target.value)} inputMode="numeric" required />
             </label>
 
             <label className="block">
-              <div className="text-xs font-semibold text-[var(--muted-2)]">Agency name</div>
-              <input className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.agency_name} onChange={(e) => update('agency_name', e.target.value)} />
+              <div className="text-xs font-semibold text-[var(--muted-2)]">Home state insurance license</div>
+              <input className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.residence_state} onChange={(e) => update('residence_state', e.target.value)} placeholder="Resident license state, e.g. CA" required />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <div className="text-xs font-semibold text-[var(--muted-2)]">
+                What IMO/FMO/insurance brokerage/captive agency, etc. do you currently work with?
+              </div>
+              <textarea
+                className="mt-2 min-h-28 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20"
+                value={form.agency_name}
+                onChange={(e) => update('agency_name', e.target.value)}
+                placeholder="Tell us who you are currently contracted with or affiliated under."
+                required
+              />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <div className="text-xs font-semibold text-[var(--muted-2)]">Primary sales model</div>
+              <select className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.sales_model} onChange={(e) => update('sales_model', e.target.value)} required>
+                <option value="">Select one</option>
+                <option>Final expense telesales</option>
+                <option>Final expense field sales</option>
+                <option>Hybrid field and telesales</option>
+                <option>Agency owner or team leader</option>
+              </select>
             </label>
 
             <label className="block sm:col-span-2">
               <div className="text-xs font-semibold text-[var(--muted-2)]">Anything we should know?</div>
-              <textarea className="mt-2 min-h-32 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="States licensed, production background, preferred markets, or anything helpful for approval." />
+              <textarea className="mt-2 min-h-32 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm outline-none focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20" value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Markets worked, lead volume needed, team size, production background, or anything helpful for approval." />
             </label>
 
             <button className="sm:col-span-2 mt-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_8px_30px_rgba(59,130,246,0.25)] hover:from-blue-500 hover:to-blue-400 disabled:opacity-50" disabled={loading} type="submit">
