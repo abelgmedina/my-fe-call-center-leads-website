@@ -1,56 +1,7 @@
 {
   "nextRequestId": 2,
   "nextOrderId": 2,
-  "requests": [
-    {
-      "full_name": "Prod Smoke Buyer 1781800838",
-      "email": "prod-smoke-1781800838@uplineagent.test",
-      "phone": "5555550199",
-      "npn": "998877",
-      "residence_state": "CA",
-      "license_state": "CA",
-      "fmo": "",
-      "imo": "",
-      "agency_name": "Smoke Test Agency",
-      "sales_model": "Final expense telesales",
-      "notes": "Production end-to-end smoke test",
-      "id": 1,
-      "status": "approved",
-      "created_at": 1781800839001,
-      "updated_at": 1781800841526,
-      "decision_notes": "Production smoke approved",
-      "decided_at": 1781800841526,
-      "decided_by": "abel",
-      "buyer_username": "prod-smoke-1781800838@uplineagent.test",
-      "buyer_code": "buyer_smoke_test_agency"
-    }
-  ],
-  "buyers": [
-    {
-      "username": "prod-smoke-1781800838@uplineagent.test",
-      "buyer_code": "buyer_smoke_test_agency",
-      "role": "buyer_agent",
-      "password_hash": "scrypt$16384$8$1$q9GPDe9h8jYNLkqtoeMXCw==$pflf++Nw7bFtvOJDLOQy78nTBjqZouGr7K5cxW4VuD8=",
-      "disabled": false,
-      "created_at": 1781800841526,
-      "updated_at": 1781800842795,
-      "last_login_at": 1781800842795
-    }
-  ],
-  "orders": [
-    {
-      "buyer_code": "buyer_smoke_test_agency",
-      "username": "prod-smoke-1781800838@uplineagent.test",
-      "product_id": "english_telesales_30",
-      "product_name": "English Telesales - 30 leads",
-      "quantity": 30,
-      "amount_cents": 60000,
-      "status": "stripe_not_configured",
-      "stripe_session_id": null,
-      "stripe_checkout_url": null,
-      "id": 1,
-      "created_at": 1781800844443,
-      "updated_at": 1781800844443
-    }
-  ]
+  "requests": [],
+  "buyers": [],
+  "orders": []
 }
