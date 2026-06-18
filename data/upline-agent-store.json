@@ -34,10 +34,10 @@
       "disabled": false,
       "phone": "5555550123",
       "created_at": 1781802624837,
-      "updated_at": 1781803672651,
+      "updated_at": 1781803679265,
       "last_login_at": 1781803620513,
-      "email_code_hash": "scrypt$16384$8$1$gAIYFmDQxSwVM1BC/re7Hw==$eZyco5PTvDKgeSS1Gyn5L6A6mkcJIZiOFS8u1PDs6pM=",
-      "email_code_expires_at": 1781804272651
+      "email_code_hash": "scrypt$16384$8$1$nBLp5etZyhNv0xL5YmQgWA==$rjam/UcxKraeRjmXjOZlrJ97hF2Y8hy4yB8Wvhg5xQo=",
+      "email_code_expires_at": 1781804279265
     }
   ],
   "orders": []
