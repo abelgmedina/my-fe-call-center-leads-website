@@ -33,7 +33,8 @@
       "password_hash": "scrypt$16384$8$1$q9GPDe9h8jYNLkqtoeMXCw==$pflf++Nw7bFtvOJDLOQy78nTBjqZouGr7K5cxW4VuD8=",
       "disabled": false,
       "created_at": 1781800841526,
-      "updated_at": 1781800841526
+      "updated_at": 1781800842795,
+      "last_login_at": 1781800842795
     }
   ],
   "orders": []
