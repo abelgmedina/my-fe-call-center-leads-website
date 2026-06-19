@@ -4,11 +4,20 @@ import { useState } from 'react';
 import { LogoutButton } from '@/components/logout-button';
 import { formatLeadPrice, leadProductCategories, leadProducts } from '@/lib/lead-products';
 
-export default function BuyerMarketplacePage() {
+type BuyerMarketplaceProps = {
+  preview?: boolean;
+};
+
+export default function BuyerMarketplacePage({ preview = false }: BuyerMarketplaceProps) {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
 
   async function checkout(productId: string) {
+    if (preview) {
+      setMsg('Preview only. Approved buyers can check out after login and onboarding.');
+      return;
+    }
+
     setBusy(productId);
     setMsg('');
     try {
@@ -36,15 +45,28 @@ export default function BuyerMarketplacePage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="text-xs font-semibold tracking-wide text-neutral-400">UplineAgent • Buyer Portal</div>
-          <h1 className="mt-1 text-2xl font-semibold">Lead Marketplace</h1>
+          <h1 className="mt-1 text-2xl font-semibold">{preview ? 'Lead Marketplace Preview' : 'Lead Marketplace'}</h1>
           <p className="mt-2 max-w-3xl text-sm text-neutral-400">
-            Approved agents can buy English and Spanish final expense lead packages here. Every package starts checkout through Stripe.
+            {preview
+              ? 'This is a public review preview of the approved buyer marketplace. Checkout stays locked behind approval, policy review, and verification.'
+              : 'Approved agents can buy English and Spanish final expense lead packages here. Every package starts checkout through Stripe.'}
           </p>
         </div>
-        <LogoutButton />
+        {preview ? (
+          <a href="/agent/login" className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm font-semibold text-white hover:bg-[var(--surface-1)]">
+            Buyer login
+          </a>
+        ) : (
+          <LogoutButton />
+        )}
       </div>
 
       {msg ? <div className="rounded-xl border border-blue-900/50 bg-blue-950/30 p-3 text-sm text-blue-100">{msg}</div> : null}
+      {preview ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+          Preview mode: pricing and layout are visible, but purchases are disabled on this page.
+        </div>
+      ) : null}
 
       <section className="space-y-5">
         {leadProductCategories.map((category) => {
@@ -77,7 +99,7 @@ export default function BuyerMarketplacePage() {
                       </div>
                     </div>
                     <button onClick={() => checkout(product.id)} disabled={!!busy} className="mt-5 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50">
-                      {busy === product.id ? 'Starting checkout...' : `Checkout ${product.quantity} leads`}
+                      {preview ? 'Preview only' : busy === product.id ? 'Starting checkout...' : `Checkout ${product.quantity} leads`}
                     </button>
                   </article>
                 ))}
