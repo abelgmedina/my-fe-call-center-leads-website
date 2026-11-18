@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       account: { email: account.email, full_name: account.full_name || '' },
-      redirectTo: '/agent/home',
+      redirectTo: '/dashboard',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
