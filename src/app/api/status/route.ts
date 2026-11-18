@@ -1,16 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getAgentStatus, setAgentStatus, type AgentStatus } from '@/lib/db';
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const agent = await requireAgent();
+  let agent;
+  try {
+    agent = await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   return NextResponse.json({ status: getAgentStatus(agent.id) });
 }
 
 export async function POST(req: Request) {
-  const agent = await requireAgent();
+  let agent;
+  try {
+    agent = await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   const body = (await req.json().catch(() => null)) as { status?: AgentStatus } | null;
   if (!body?.status) return NextResponse.json({ error: 'Missing status' }, { status: 400 });
 

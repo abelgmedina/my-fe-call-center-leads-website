@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getTwilioClient } from '@/lib/twilio';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
 /** Cancel an in-flight attempt (best-effort). Body: { callSid } */
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as any;
   const callSid = String(body?.callSid || '').trim();
   if (!callSid) return NextResponse.json({ error: 'callSid required' }, { status: 400 });

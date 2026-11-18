@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAgents } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'internal');
+  if (denied) return denied;
   const agents = getAgents();
   const rows = db
     .prepare('select agent_id, status, updated_at from agent_state')

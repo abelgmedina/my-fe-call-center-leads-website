@@ -9,6 +9,10 @@ type ContactForm = {
   inquiry: string;
 };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 type SamplePreviewProps = {
   eyebrow: string;
   title: string;
@@ -61,12 +65,14 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
         body: JSON.stringify({ username, password }),
       });
       const text = await res.text();
-      const data = text ? JSON.parse(text) : null;
+      const data = text ? (JSON.parse(text) as { error?: string }) : null;
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-      const rt = searchParams?.returnTo;
-      window.location.href = rt ? rt : data?.agent?.role === 'buyer' ? '/buyer/marketplace' : '/ops/lead-purchase';
-    } catch (e: any) {
-      setMsg(e?.message || String(e));
+      const requested = searchParams?.returnTo || '';
+      const safeReturnTo = requested.startsWith('/') && !requested.startsWith('//') ? requested : '';
+      const destination = safeReturnTo || '/dashboard';
+      window.location.href = destination;
+    } catch (e: unknown) {
+      setMsg(errorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -82,12 +88,12 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactForm),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
       setContactMsg('Thanks, your inquiry was sent. We will follow up soon.');
       setContactForm({ name: '', email: '', phone: '', inquiry: '' });
-    } catch (e: any) {
-      setContactMsg(e?.message || String(e));
+    } catch (e: unknown) {
+      setContactMsg(errorMessage(e));
     } finally {
       setContactLoading(false);
     }
@@ -175,14 +181,14 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-[var(--foreground)]">Login</div>
-                <div className="mt-1 text-xs text-[var(--muted-2)]">Secure access for lead buyers.</div>
+                <div className="mt-1 text-xs text-[var(--muted-2)]">Sign in with your email and password.</div>
               </div>
               <div className="h-9 w-9 rounded-full bg-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.22)]" />
             </div>
 
             <form onSubmit={submit} className="mt-6">
               <label className="block text-sm">
-                <div className="text-xs font-semibold text-[var(--muted-2)]">Username</div>
+                <div className="text-xs font-semibold text-[var(--muted-2)]">Email or username</div>
                 <input
                   className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[color:rgba(255,255,255,0.04)] p-3 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted-2)] focus:border-blue-500/60 focus:ring-2 focus:ring-blue-600/20"
                   value={username}
@@ -215,16 +221,16 @@ export default function AgentLoginPage({ searchParams }: { searchParams?: { retu
 
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/4 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-200/80">Need access?</div>
-              <div className="mt-2 text-sm text-[var(--foreground)]">Create your account and submit your details for approval.</div>
+              <div className="mt-2 text-sm text-[var(--foreground)]">Create an agent account with your email and password. License and carrier details can wait.</div>
               <form action="/agent/signup" className="mt-4">
                 <button
                   type="submit"
                   className="relative z-20 block w-full rounded-xl border border-white/15 bg-white/6 px-3 py-3 text-center text-sm font-semibold text-white hover:border-blue-400/40 hover:bg-blue-500/10"
                 >
-                  Create My Agent Account
+                  Create agent account
                 </button>
               </form>
-              <div className="mt-3 text-xs text-[var(--muted-2)]">Access stays pending until approved.</div>
+              <div className="mt-3 text-xs text-[var(--muted-2)]">New accounts enter a restricted CRM workspace immediately.</div>
             </div>
           </div>
 

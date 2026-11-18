@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,9 @@ function startOfDayPacificMs() {
   return start.getTime();
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'internal');
+  if (denied) return denied;
   const since = startOfDayPacificMs();
   const rows = db
     .prepare(

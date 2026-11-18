@@ -3,6 +3,7 @@ import { gogJson } from '@/lib/gog';
 import { db, getAgentStatus } from '@/lib/db';
 import { getTwilioClient } from '@/lib/twilio';
 import { tzForState, localParts, bucketForHour } from '@/lib/timezones';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -59,6 +60,8 @@ function isTestLead(leadId: string, phone: string) {
  * - limit (default 1, max 5)
  */
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const limit = Math.max(1, Math.min(5, Number(searchParams.get('limit') || '1')));
 

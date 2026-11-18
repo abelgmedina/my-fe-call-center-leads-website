@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -25,7 +25,11 @@ function idx(headers: string[], name: string) {
 }
 
 export async function GET(req: Request) {
-  await requireAgent();
+  try {
+    await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   const { searchParams } = new URL(req.url);
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') || 20)));
 

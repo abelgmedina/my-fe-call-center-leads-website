@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 type StoreRequest = {
   id: number;
   full_name: string;
@@ -46,6 +48,26 @@ type StoreBuyer = {
   last_login_at?: number;
 };
 
+// These are deliberately separate from buyers and internal agents. A portal
+// account is allowed to use only the restricted self-service workspace; it is
+// never a Twilio identity, lead buyer, or ops principal.
+export type PortalAccount = {
+  id: string;
+  email: string;
+  full_name?: string;
+  password_hash: string;
+  status: 'active' | 'disabled';
+  phone?: string;
+  npn?: string;
+  residence_state?: string;
+  license_state?: string;
+  agency_name?: string;
+  sales_model?: string;
+  created_at: number;
+  updated_at: number;
+  last_login_at?: number;
+};
+
 type StoreOrder = {
   id: number;
   buyer_code: string;
@@ -67,6 +89,7 @@ type Store = {
   nextOrderId: number;
   requests: StoreRequest[];
   buyers: StoreBuyer[];
+  portal_accounts: PortalAccount[];
   orders: StoreOrder[];
 };
 
@@ -93,6 +116,7 @@ function emptyStore(): Store {
     nextOrderId: 1,
     requests: [],
     buyers: [],
+    portal_accounts: [],
     orders: [],
   };
 }
@@ -135,6 +159,7 @@ async function readStoreWithSha(): Promise<{ store: Store; sha?: string }> {
       ...parsed,
       requests: Array.isArray(parsed.requests) ? parsed.requests as StoreRequest[] : [],
       buyers: Array.isArray(parsed.buyers) ? parsed.buyers as StoreBuyer[] : [],
+      portal_accounts: Array.isArray(parsed.portal_accounts) ? parsed.portal_accounts as PortalAccount[] : [],
       orders: Array.isArray(parsed.orders) ? parsed.orders as StoreOrder[] : [],
     },
   };
@@ -258,6 +283,77 @@ export async function updateBuyerInStore(username: string, updater: (buyer: Stor
     updater(buyer);
     buyer.updated_at = Date.now();
     return buyer;
+  });
+}
+
+function normalizedEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export async function createPortalAccountInStore(input: {
+  email: string;
+  full_name?: string;
+  password_hash: string;
+}) {
+  const now = Date.now();
+  const email = normalizedEmail(input.email);
+
+  return mutateStore('Create restricted Upline Agent portal account', (store) => {
+    const alreadyBuyer = store.buyers.some((buyer) => normalizedEmail(buyer.username) === email);
+    const alreadyPortal = store.portal_accounts.some((account) => normalizedEmail(account.email) === email);
+    if (alreadyBuyer || alreadyPortal) throw new Error('ACCOUNT_EXISTS');
+
+    const account: PortalAccount = {
+      id: `portal_${crypto.randomUUID()}`,
+      email,
+      full_name: String(input.full_name || '').trim(),
+      password_hash: input.password_hash,
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+    };
+    store.portal_accounts.push(account);
+    return account;
+  });
+}
+
+export async function findPortalAccountInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  const { store } = await readStoreWithSha();
+  return store.portal_accounts.find((account) => normalizedEmail(account.email) === wanted) || null;
+}
+
+export async function getPortalAccountByIdInStore(id: string) {
+  const { store } = await readStoreWithSha();
+  return store.portal_accounts.find((account) => account.id === id) || null;
+}
+
+export async function markPortalAccountLoginInStore(id: string) {
+  return mutateStore('Update restricted portal last login', (store) => {
+    const account = store.portal_accounts.find((row) => row.id === id);
+    if (!account) return null;
+    account.last_login_at = Date.now();
+    account.updated_at = Date.now();
+    return account;
+  });
+}
+
+export async function updatePortalAccountProfileInStore(
+  id: string,
+  profile: Pick<PortalAccount, 'full_name' | 'phone' | 'npn' | 'residence_state' | 'license_state' | 'agency_name' | 'sales_model'>
+) {
+  return mutateStore('Update restricted portal profile', (store) => {
+    const account = store.portal_accounts.find((row) => row.id === id);
+    if (!account || account.status !== 'active') throw new Error('PORTAL_ACCOUNT_NOT_FOUND');
+    account.full_name = profile.full_name;
+    account.phone = profile.phone;
+    account.npn = profile.npn;
+    account.residence_state = profile.residence_state;
+    account.license_state = profile.license_state;
+    account.agency_name = profile.agency_name;
+    account.sales_model = profile.sales_model;
+    account.updated_at = Date.now();
+    return account;
   });
 }
 

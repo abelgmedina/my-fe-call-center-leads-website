@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +15,9 @@ function idx(headers: string[], name: string) {
 
 const COLUMNS = ['READY_FOR_CALL', 'NO_ANSWER', 'CALL_APPT_SET', 'QUALIFIED_TRANSFER_NOW', 'BAD_NUMBER', 'OPT_OUT'] as const;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'internal');
+  if (denied) return denied;
   const headerResp = await gogJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
     { account: ACCOUNT }

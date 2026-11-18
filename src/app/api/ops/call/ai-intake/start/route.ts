@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 import { getTwilioClient, publicBaseUrl } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
  */
 export async function POST(req: Request) {
   try {
-    await requireAgent();
+    await requireInternalAgent();
   } catch {
     return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
   }

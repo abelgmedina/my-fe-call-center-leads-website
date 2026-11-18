@@ -8,13 +8,17 @@ type BuyerMarketplaceProps = {
   preview?: boolean;
 };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default function BuyerMarketplacePage({ preview = false }: BuyerMarketplaceProps) {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
 
   async function checkout(productId: string) {
     if (preview) {
-      setMsg('Preview only. Approved buyers can check out after login and onboarding.');
+      setMsg('Preview only. Sign in to start checkout.');
       return;
     }
 
@@ -33,8 +37,8 @@ export default function BuyerMarketplacePage({ preview = false }: BuyerMarketpla
         return;
       }
       setMsg(data.message || 'Order request saved. We will follow up with next steps.');
-    } catch (error: any) {
-      setMsg(error?.message || String(error));
+    } catch (error: unknown) {
+      setMsg(errorMessage(error));
     } finally {
       setBusy('');
     }
@@ -48,8 +52,8 @@ export default function BuyerMarketplacePage({ preview = false }: BuyerMarketpla
           <h1 className="mt-1 text-2xl font-semibold">{preview ? 'Lead Marketplace Preview' : 'Lead Marketplace'}</h1>
           <p className="mt-2 max-w-3xl text-sm text-neutral-400">
             {preview
-              ? 'This is a public review preview of the approved buyer marketplace. Checkout stays locked behind approval, policy review, and verification.'
-              : 'Approved agents can buy English and Spanish final expense lead packages here. Every package starts checkout through Stripe.'}
+              ? 'This is a public review preview of the buyer marketplace. Sign in to begin checkout.'
+              : 'Signed-in buyers can buy English and Spanish final expense lead packages here. Every package starts checkout through Stripe.'}
           </p>
         </div>
         {preview ? (
@@ -111,9 +115,9 @@ export default function BuyerMarketplacePage({ preview = false }: BuyerMarketpla
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface-1)] p-5">
         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300/80">Access model</div>
-        <h2 className="mt-2 text-lg font-semibold">Exclusive access stays approval-gated</h2>
+        <h2 className="mt-2 text-lg font-semibold">Ordering access</h2>
         <p className="mt-2 text-sm text-neutral-400">
-          Agents only reach this marketplace after you approve their application and create their login. For now, approved buyers are kept inside this ordering page only.
+          Your account can place lead orders without a separate policy, email, or phone verification screen. Terms and policies remain available in the footer for reference.
         </p>
       </section>
     </main>

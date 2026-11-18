@@ -167,6 +167,26 @@ db.exec(`
     last_login_at integer
   );
 
+  -- Restricted portal accounts are intentionally distinct from buyer_users
+  -- and telephony agents. They can only enter /agent/home and manage their
+  -- own optional profile until an owner performs a separate activation.
+  create table if not exists portal_accounts (
+    id text primary key,
+    email text unique not null,
+    full_name text,
+    password_hash text not null,
+    status text not null default 'active',
+    phone text,
+    npn text,
+    residence_state text,
+    license_state text,
+    agency_name text,
+    sales_model text,
+    created_at integer not null,
+    updated_at integer not null,
+    last_login_at integer
+  );
+
   create table if not exists lead_orders (
     id integer primary key autoincrement,
     buyer_code text not null,

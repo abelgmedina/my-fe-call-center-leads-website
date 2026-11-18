@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 import { setAgentStatus, type AgentStatus } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -16,7 +16,12 @@ function isManager(agentId: string) {
 }
 
 export async function POST(req: Request) {
-  const me = await requireAgent();
+  let me;
+  try {
+    me = await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
+  }
   if (!isManager(me.id)) {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
   }

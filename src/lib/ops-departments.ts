@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getDeptMode, setAgentStatus, setDeptMode } from '@/lib/db';
+import { internalOpsHeaders } from '@/lib/ops-access';
 
 const execAsync = promisify(exec);
 
@@ -73,6 +74,7 @@ function withMeta(id: string, health: DeptHealth, summary: string, checkedAt: st
 
 async function check(base: string, id: string): Promise<DepartmentStatus> {
   const now = new Date().toISOString();
+  const opsHeaders = internalOpsHeaders();
 
   if (getDeptMode(id) === 'isolated') {
     return withMeta(id, 'degraded', 'Department intentionally isolated (admin mode).', now);
@@ -91,7 +93,7 @@ async function check(base: string, id: string): Promise<DepartmentStatus> {
     }
 
     if (id === 'agent_runtime') {
-      const r = await fetch(`${base}/api/ops/agents`, { cache: 'no-store' });
+      const r = await fetch(`${base}/api/ops/agents`, { cache: 'no-store', headers: opsHeaders });
       const data = await r.json();
       const abel = (data.agents || []).find((a: any) => a.id === 'abel');
       const ok = !!abel && abel.status === 'AVAILABLE';
@@ -118,7 +120,7 @@ async function check(base: string, id: string): Promise<DepartmentStatus> {
     }
 
     if (id === 'sheets_router' || id === 'sms_outbound') {
-      const r = await fetch(`${base}/api/ops/health`, { cache: 'no-store' });
+      const r = await fetch(`${base}/api/ops/health`, { cache: 'no-store', headers: opsHeaders });
       const data = await r.json();
       const checks = data.checks || [];
       const twilioOk = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_SMS_FROM'].every((k) => checks.find((c: any) => c.name === `env:${k}`)?.ok);
@@ -128,7 +130,7 @@ async function check(base: string, id: string): Promise<DepartmentStatus> {
     }
 
     if (id === 'power_dialer') {
-      const r = await fetch(`${base}/api/ops/call/queue`, { cache: 'no-store' });
+      const r = await fetch(`${base}/api/ops/call/queue`, { cache: 'no-store', headers: opsHeaders });
       const data = await r.json();
       const grouped = data.grouped || {};
       const queueCount = Object.values(grouped).reduce((n: number, arr: any) => n + (arr?.length || 0), 0);

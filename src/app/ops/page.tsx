@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { headers } from 'next/headers';
+import { currentRequestAuthHeaders } from '@/lib/request-auth';
 
 async function baseUrl() {
   const h: any = await (headers() as any);
@@ -15,7 +16,7 @@ async function baseUrl() {
 
 async function getSummary() {
   const url = `${await baseUrl()}/api/ops/summary`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
   if (!res.ok) throw new Error(`Failed to load ops summary: ${res.status}`);
   return res.json();
 }
