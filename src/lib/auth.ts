@@ -98,26 +98,47 @@ export async function resetConfiguredOwnerPassword(input: { passwordHash: string
   const ownerEmail = configuredOwnerEmail();
   if (!ownerEmail) throw new Error('OWNER_RESET_UNAVAILABLE');
 
-  const { isGitHubStoreConfigured, resetOwnerPasswordInStore } = await import('@/lib/github-store');
+  const { createOwnerAccountInStore, isGitHubStoreConfigured, resetOwnerPasswordInStore } = await import('@/lib/github-store');
   const usingGitHubStore = isGitHubStoreConfigured();
   // Vercel's local filesystem is ephemeral. A production recovery operation
   // must never appear to succeed there unless the durable GitHub store is
   // available to persist the new credential and reset replay marker.
   if (process.env.VERCEL && !usingGitHubStore) throw new Error('OWNER_RESET_UNAVAILABLE');
   if (usingGitHubStore) {
-    const owner = await resetOwnerPasswordInStore({
-      email: ownerEmail,
-      password_hash: input.passwordHash,
-      reset_token_hash: input.resetTokenHash,
-    });
-    return Number(owner.session_version || 1);
+    try {
+      const owner = await resetOwnerPasswordInStore({
+        email: ownerEmail,
+        password_hash: input.passwordHash,
+        reset_token_hash: input.resetTokenHash,
+      });
+      return Number(owner.session_version || 1);
+    } catch (error) {
+      // The prior one-time owner setup may never have been completed. The
+      // same private recovery token can safely establish the configured
+      // owner credential once, while retaining single-use replay protection.
+      if (!(error instanceof Error) || error.message !== 'OWNER_ACCOUNT_NOT_FOUND') throw error;
+      const owner = await createOwnerAccountInStore({
+        email: ownerEmail,
+        password_hash: input.passwordHash,
+        last_reset_token_hash: input.resetTokenHash,
+      });
+      return Number(owner.session_version || 1);
+    }
   }
 
   const { db } = await import('@/lib/db');
   const existing = db
-    .prepare('select session_version, last_reset_token_hash from owner_accounts where lower(email) = lower(?) and status = ?')
-    .get(ownerEmail, 'active') as { session_version?: number; last_reset_token_hash?: string } | undefined;
-  if (!existing) throw new Error('OWNER_ACCOUNT_NOT_FOUND');
+    .prepare('select status, session_version, last_reset_token_hash from owner_accounts where lower(email) = lower(?)')
+    .get(ownerEmail) as { status?: string; session_version?: number; last_reset_token_hash?: string } | undefined;
+  if (!existing) {
+    const now = Date.now();
+    db.prepare(
+      `insert into owner_accounts (email, password_hash, status, session_version, last_reset_token_hash, created_at, updated_at)
+       values (?, ?, 'active', 1, ?, ?, ?)`
+    ).run(ownerEmail, input.passwordHash, input.resetTokenHash, now, now);
+    return 1;
+  }
+  if (existing.status !== 'active') throw new Error('OWNER_ACCOUNT_NOT_FOUND');
   if (existing.last_reset_token_hash === input.resetTokenHash) throw new Error('OWNER_RESET_ALREADY_USED');
 
   const currentVersion = Number(existing.session_version || 1);

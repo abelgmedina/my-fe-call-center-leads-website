@@ -327,11 +327,15 @@ export async function findOwnerAccountInStore(email: string) {
  * Creates the one durable owner credential. This is deliberately create-only:
  * the short-lived setup link cannot be replayed to replace a password later.
  */
-export async function createOwnerAccountInStore(input: { email: string; password_hash: string }) {
+export async function createOwnerAccountInStore(input: {
+  email: string;
+  password_hash: string;
+  last_reset_token_hash?: string;
+}) {
   const now = Date.now();
   const email = normalizedEmail(input.email);
   return mutateStore('Create UplineAgent owner credential', (store) => {
-    if (store.owner_account?.status === 'active') throw new Error('OWNER_ACCOUNT_EXISTS');
+    if (store.owner_account) throw new Error('OWNER_ACCOUNT_EXISTS');
     if (store.buyers.some((buyer) => normalizedEmail(buyer.username) === email) || store.portal_accounts.some((account) => normalizedEmail(account.email) === email)) {
       throw new Error('OWNER_EMAIL_IN_USE');
     }
@@ -340,6 +344,7 @@ export async function createOwnerAccountInStore(input: { email: string; password
       password_hash: input.password_hash,
       status: 'active',
       session_version: 1,
+      ...(input.last_reset_token_hash ? { last_reset_token_hash: input.last_reset_token_hash } : {}),
       created_at: now,
       updated_at: now,
     };

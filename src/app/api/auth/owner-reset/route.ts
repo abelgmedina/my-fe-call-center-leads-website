@@ -50,7 +50,13 @@ export async function POST(req: Request) {
     await setSession({ kind: 'env', agentId: 'abel', ownerSessionVersion });
     return response({ ok: true, redirectTo: '/dashboard' });
   } catch (error) {
-    if (error instanceof Error && (error.message === 'OWNER_ACCOUNT_NOT_FOUND' || error.message === 'OWNER_RESET_ALREADY_USED' || error.message === 'OWNER_RESET_UNAVAILABLE')) {
+    if (error instanceof Error && (
+      error.message === 'OWNER_ACCOUNT_NOT_FOUND'
+      || error.message === 'OWNER_RESET_ALREADY_USED'
+      || error.message === 'OWNER_RESET_UNAVAILABLE'
+      || error.message === 'OWNER_ACCOUNT_EXISTS'
+      || error.message === 'OWNER_EMAIL_IN_USE'
+    )) {
       return response({ ok: false, error: 'Not found.' }, 404);
     }
     return response({ ok: false, error: 'Unable to reset the owner password. Please try again.' }, 500);
