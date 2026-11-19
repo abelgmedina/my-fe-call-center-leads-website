@@ -302,7 +302,7 @@ export default function CommandCenter({
               <StatCard label="Inbound queue" value={canOperate ? queueTotal : '—'} detail={canOperate ? 'Leads waiting across callable queues' : 'Unlocked only after agent activation'} />
               <StatCard label="Callbacks" value={canOperate ? callbacks : '—'} detail={canOperate ? 'Scheduled follow-up work' : 'Your workspace is active'} accent="violet" />
               <StatCard label="Available agents" value={canOperate ? availableAgents : '—'} detail={canOperate ? 'Current team availability' : 'No team data exposed'} accent="green" />
-              <StatCard label="Phone system" value={healthReady ? 'Check' : 'Offline'} detail={canOperate ? `${healthChecksPassing} provider checks passing` : 'Requires owner activation'} accent="amber" />
+              <StatCard label="Phone system" value={healthReady ? 'Preflight' : 'Offline'} detail={canOperate ? (healthReady ? `${healthChecksPassing} provider checks passing` : 'Provider credentials and callbacks still needed') : 'Requires owner activation'} accent="amber" />
             </div>
           </section>
 
