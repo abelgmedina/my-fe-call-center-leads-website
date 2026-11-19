@@ -76,6 +76,13 @@ export type OwnerAccount = {
   email: string;
   password_hash: string;
   status: 'active' | 'disabled';
+  // A password reset increments this value. Owner sessions carry the value
+  // they were issued with, so resetting a password invalidates old owner
+  // sessions without affecting buyer or restricted portal accounts.
+  session_version?: number;
+  // SHA-256 digest of the one-time recovery token that last succeeded. The
+  // raw recovery token never enters durable storage.
+  last_reset_token_hash?: string;
   created_at: number;
   updated_at: number;
   last_login_at?: number;
@@ -332,6 +339,7 @@ export async function createOwnerAccountInStore(input: { email: string; password
       email,
       password_hash: input.password_hash,
       status: 'active',
+      session_version: 1,
       created_at: now,
       updated_at: now,
     };
@@ -346,6 +354,42 @@ export async function markOwnerAccountLoginInStore(email: string) {
     const owner = store.owner_account;
     if (!owner || normalizedEmail(owner.email) !== wanted || owner.status !== 'active') return null;
     owner.last_login_at = Date.now();
+    owner.updated_at = Date.now();
+    return owner;
+  });
+}
+
+export async function getOwnerSessionVersionInStore(email: string) {
+  const owner = await findOwnerAccountInStore(email);
+  if (!owner) return null;
+  const version = Number(owner.session_version || 1);
+  return Number.isSafeInteger(version) && version > 0 ? version : 1;
+}
+
+/**
+ * Replaces the durable owner password after a separately validated, one-time
+ * recovery token is presented. Keeping the token digest lets us reject a
+ * replay even while the short expiry window is still open.
+ */
+export async function resetOwnerPasswordInStore(input: {
+  email: string;
+  password_hash: string;
+  reset_token_hash: string;
+}) {
+  const email = normalizedEmail(input.email);
+  return mutateStore('Reset UplineAgent owner credential', (store) => {
+    const owner = store.owner_account;
+    if (!owner || owner.status !== 'active' || normalizedEmail(owner.email) !== email) {
+      throw new Error('OWNER_ACCOUNT_NOT_FOUND');
+    }
+    if (!input.reset_token_hash || owner.last_reset_token_hash === input.reset_token_hash) {
+      throw new Error('OWNER_RESET_ALREADY_USED');
+    }
+
+    const currentVersion = Number(owner.session_version || 1);
+    owner.password_hash = input.password_hash;
+    owner.session_version = Number.isSafeInteger(currentVersion) && currentVersion > 0 ? currentVersion + 1 : 2;
+    owner.last_reset_token_hash = input.reset_token_hash;
     owner.updated_at = Date.now();
     return owner;
   });

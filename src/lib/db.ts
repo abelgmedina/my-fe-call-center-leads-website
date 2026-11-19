@@ -2,7 +2,10 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const dataDir = process.env.VERCEL ? path.join('/tmp', 'uplineagent-data') : path.join(process.cwd(), 'data');
+// Local verification can opt into an isolated directory without touching a
+// developer's existing ignored `data/` store. Production remains on the
+// durable GitHub store for owner credentials.
+const dataDir = process.env.UPLINE_DATA_DIR?.trim() || (process.env.VERCEL ? path.join('/tmp', 'uplineagent-data') : path.join(process.cwd(), 'data'));
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const dbPath = path.join(dataDir, 'app.db');
@@ -191,6 +194,8 @@ db.exec(`
     email text primary key,
     password_hash text not null,
     status text not null default 'active',
+    session_version integer not null default 1,
+    last_reset_token_hash text,
     created_at integer not null,
     updated_at integer not null,
     last_login_at integer
@@ -228,6 +233,8 @@ try { db.prepare('alter table agent_access_requests add column license_state tex
 try { db.prepare('alter table agent_access_requests add column fmo text').run(); } catch {}
 try { db.prepare('alter table agent_access_requests add column imo text').run(); } catch {}
 try { db.prepare('alter table agent_access_requests add column sales_model text').run(); } catch {}
+try { db.prepare('alter table owner_accounts add column session_version integer not null default 1').run(); } catch {}
+try { db.prepare('alter table owner_accounts add column last_reset_token_hash text').run(); } catch {}
 try { db.prepare('alter table agent_access_requests add column decision_notes text').run(); } catch {}
 try { db.prepare('alter table agent_access_requests add column decided_at integer').run(); } catch {}
 try { db.prepare('alter table agent_access_requests add column decided_by text').run(); } catch {}

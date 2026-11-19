@@ -51,12 +51,12 @@ const COOKIE = 'oc_agent';
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 type SessionPayload =
-  | { kind: 'env'; agentId: string; iat: number; exp: number }
+  | { kind: 'env'; agentId: string; ownerSessionVersion?: number; iat: number; exp: number }
   | { kind: 'buyer'; username: string; buyer_code: string; buyer_role: 'buyer_admin' | 'buyer_agent'; iat: number; exp: number }
   | { kind: 'portal'; accountId: string; email: string; iat: number; exp: number };
 
 type SessionInput =
-  | { kind: 'env'; agentId: string }
+  | { kind: 'env'; agentId: string; ownerSessionVersion?: number }
   | { kind: 'buyer'; username: string; buyer_code: string; buyer_role: 'buyer_admin' | 'buyer_agent' }
   | { kind: 'portal'; accountId: string; email: string };
 
@@ -76,6 +76,58 @@ function configuredOwnerEmail() {
 
 function ownerLoginEnforced() {
   return process.env.OWNER_LOGIN_ENFORCED === 'true';
+}
+
+async function currentOwnerSessionVersion() {
+  const ownerEmail = configuredOwnerEmail();
+  if (!ownerEmail) return null;
+
+  const { getOwnerSessionVersionInStore, isGitHubStoreConfigured } = await import('@/lib/github-store');
+  if (isGitHubStoreConfigured()) return getOwnerSessionVersionInStore(ownerEmail);
+
+  const { db } = await import('@/lib/db');
+  const row = db
+    .prepare('select session_version from owner_accounts where lower(email) = lower(?) and status = ?')
+    .get(ownerEmail, 'active') as { session_version?: number } | undefined;
+  if (!row) return null;
+  const version = Number(row.session_version || 1);
+  return Number.isSafeInteger(version) && version > 0 ? version : 1;
+}
+
+export async function resetConfiguredOwnerPassword(input: { passwordHash: string; resetTokenHash: string }) {
+  const ownerEmail = configuredOwnerEmail();
+  if (!ownerEmail) throw new Error('OWNER_RESET_UNAVAILABLE');
+
+  const { isGitHubStoreConfigured, resetOwnerPasswordInStore } = await import('@/lib/github-store');
+  const usingGitHubStore = isGitHubStoreConfigured();
+  // Vercel's local filesystem is ephemeral. A production recovery operation
+  // must never appear to succeed there unless the durable GitHub store is
+  // available to persist the new credential and reset replay marker.
+  if (process.env.VERCEL && !usingGitHubStore) throw new Error('OWNER_RESET_UNAVAILABLE');
+  if (usingGitHubStore) {
+    const owner = await resetOwnerPasswordInStore({
+      email: ownerEmail,
+      password_hash: input.passwordHash,
+      reset_token_hash: input.resetTokenHash,
+    });
+    return Number(owner.session_version || 1);
+  }
+
+  const { db } = await import('@/lib/db');
+  const existing = db
+    .prepare('select session_version, last_reset_token_hash from owner_accounts where lower(email) = lower(?) and status = ?')
+    .get(ownerEmail, 'active') as { session_version?: number; last_reset_token_hash?: string } | undefined;
+  if (!existing) throw new Error('OWNER_ACCOUNT_NOT_FOUND');
+  if (existing.last_reset_token_hash === input.resetTokenHash) throw new Error('OWNER_RESET_ALREADY_USED');
+
+  const currentVersion = Number(existing.session_version || 1);
+  const nextVersion = Number.isSafeInteger(currentVersion) && currentVersion > 0 ? currentVersion + 1 : 2;
+  db.prepare(
+    `update owner_accounts
+     set password_hash = ?, session_version = ?, last_reset_token_hash = ?, updated_at = ?
+     where lower(email) = lower(?) and status = ?`
+  ).run(input.passwordHash, nextVersion, input.resetTokenHash, Date.now(), ownerEmail, 'active');
+  return nextVersion;
 }
 
 function sign(payload: string) {
@@ -117,7 +169,12 @@ export function getAgents(): AgentConfig[] {
 
 export async function setSession(payload: SessionInput) {
   const now = Date.now();
-  const full: SessionPayload = { ...payload, iat: now, exp: now + SESSION_TTL_SECONDS * 1000 } as SessionPayload;
+  let sessionInput = payload;
+  if (payload.kind === 'env' && payload.agentId === 'abel' && payload.ownerSessionVersion === undefined) {
+    const ownerSessionVersion = await currentOwnerSessionVersion();
+    if (ownerSessionVersion !== null) sessionInput = { ...payload, ownerSessionVersion };
+  }
+  const full: SessionPayload = { ...sessionInput, iat: now, exp: now + SESSION_TTL_SECONDS * 1000 } as SessionPayload;
   const b64 = Buffer.from(JSON.stringify(full), 'utf8').toString('base64url');
   const sig = sign(b64);
   const c = await cookies();
@@ -147,7 +204,29 @@ export async function getSession(): Promise<SessionPayload | null> {
     const iat = Number(data.iat || 0);
     const exp = Number(data.exp || 0);
     if (!data.kind || !iat || !exp || exp <= Date.now()) return null;
-    if (data.kind === 'env' && typeof data.agentId === 'string') return { kind: 'env', agentId: data.agentId, iat, exp };
+    if (data.kind === 'env' && typeof data.agentId === 'string') {
+      const ownerSessionVersion = Number(data.ownerSessionVersion || 0);
+      const session: SessionPayload = {
+        kind: 'env',
+        agentId: data.agentId,
+        ...(Number.isSafeInteger(ownerSessionVersion) && ownerSessionVersion > 0 ? { ownerSessionVersion } : {}),
+        iat,
+        exp,
+      };
+      if (session.agentId === 'abel') {
+        try {
+          const currentVersion = await currentOwnerSessionVersion();
+          // Once a durable owner credential exists, only a cookie issued at
+          // its current version may remain authenticated. This kills every
+          // older owner session immediately after a password recovery.
+          if (currentVersion !== null && session.ownerSessionVersion !== currentVersion) return null;
+        } catch {
+          // If we cannot check the durable owner credential, fail closed.
+          return null;
+        }
+      }
+      return session;
+    }
     if (data.kind === 'buyer' && typeof data.username === 'string' && typeof data.buyer_code === 'string' && (data.buyer_role === 'buyer_admin' || data.buyer_role === 'buyer_agent')) {
       return { kind: 'buyer', username: data.username, buyer_code: data.buyer_code, buyer_role: data.buyer_role, iat, exp };
     }
