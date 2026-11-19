@@ -70,6 +70,14 @@ function normalizedEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+function configuredOwnerEmail() {
+  return normalizedEmail(process.env.OWNER_LOGIN_EMAIL || '');
+}
+
+function ownerLoginEnforced() {
+  return process.env.OWNER_LOGIN_ENFORCED === 'true';
+}
+
 function sign(payload: string) {
   const secret = requireEnv('AUTH_SECRET');
   return crypto.createHmac('sha256', secret).update(payload).digest('hex');
@@ -204,11 +212,55 @@ export async function requirePortalAccount(): Promise<PortalAccountProfile> {
   return publicPortalAccount(account);
 }
 
+async function verifyConfiguredOwnerLogin(login: string, password: string) {
+  const ownerEmail = configuredOwnerEmail();
+  if (!ownerEmail || normalizedEmail(login) !== ownerEmail) return null;
+
+  const ownerAgent = getAgents().find((agent) => agent.id === 'abel' && (!agent.role || agent.role === 'internal'));
+  if (!ownerAgent) return null;
+
+  const { verifyPassword } = await import('@/lib/passwords');
+  const { findOwnerAccountInStore, isGitHubStoreConfigured, markOwnerAccountLoginInStore } = await import('@/lib/github-store');
+
+  try {
+    if (isGitHubStoreConfigured()) {
+      const account = await findOwnerAccountInStore(ownerEmail);
+      if (!account || !verifyPassword(password, account.password_hash)) return null;
+      try { await markOwnerAccountLoginInStore(ownerEmail); } catch {}
+      return ownerAgent;
+    }
+
+    const { db } = await import('@/lib/db');
+    const account = db
+      .prepare('select email, password_hash, status from owner_accounts where lower(email) = lower(?)')
+      .get(ownerEmail) as { email: string; password_hash: string; status: string } | undefined;
+    if (!account || account.status !== 'active' || !verifyPassword(password, account.password_hash)) return null;
+    try {
+      db.prepare('update owner_accounts set last_login_at = ?, updated_at = ? where email = ?').run(Date.now(), Date.now(), account.email);
+    } catch {}
+    return ownerAgent;
+  } catch {
+    // Auth-storage failures must fail closed and look like an ordinary invalid login.
+    return null;
+  }
+}
+
 export async function verifyLogin(username: string, password: string) {
   const login = username.trim();
   const agents = getAgents();
+
+  const configuredOwner = await verifyConfiguredOwnerLogin(login, password);
+  if (configuredOwner) return { kind: 'env' as const, agent: configuredOwner };
+
+  // Once a dedicated owner email is configured, never let that address fall
+  // through into a buyer or restricted portal identity.
+  if (configuredOwnerEmail() && normalizedEmail(login) === configuredOwnerEmail()) return null;
+
   const agent = agents.find((a) => a.username.toLowerCase() === login.toLowerCase());
   if (agent) {
+    // During migration the existing owner stays available until the new login
+    // is verified. Setting OWNER_LOGIN_ENFORCED=true retires that legacy path.
+    if (agent.id === 'abel' && configuredOwnerEmail() && ownerLoginEnforced()) return null;
     const a = Buffer.from(agent.password);
     const b = Buffer.from(password);
     if (a.length !== b.length) return null;

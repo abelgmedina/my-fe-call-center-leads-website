@@ -68,6 +68,19 @@ export type PortalAccount = {
   last_login_at?: number;
 };
 
+// The owner credential is intentionally separate from buyer and portal
+// accounts. It only resolves to the already-configured internal `abel` agent
+// after the login code verifies it, so a public portal account can never be
+// promoted into telephony or operations access.
+export type OwnerAccount = {
+  email: string;
+  password_hash: string;
+  status: 'active' | 'disabled';
+  created_at: number;
+  updated_at: number;
+  last_login_at?: number;
+};
+
 type StoreOrder = {
   id: number;
   buyer_code: string;
@@ -90,6 +103,7 @@ type Store = {
   requests: StoreRequest[];
   buyers: StoreBuyer[];
   portal_accounts: PortalAccount[];
+  owner_account: OwnerAccount | null;
   orders: StoreOrder[];
 };
 
@@ -117,6 +131,7 @@ function emptyStore(): Store {
     requests: [],
     buyers: [],
     portal_accounts: [],
+    owner_account: null,
     orders: [],
   };
 }
@@ -160,6 +175,9 @@ async function readStoreWithSha(): Promise<{ store: Store; sha?: string }> {
       requests: Array.isArray(parsed.requests) ? parsed.requests as StoreRequest[] : [],
       buyers: Array.isArray(parsed.buyers) ? parsed.buyers as StoreBuyer[] : [],
       portal_accounts: Array.isArray(parsed.portal_accounts) ? parsed.portal_accounts as PortalAccount[] : [],
+      owner_account: parsed.owner_account && typeof parsed.owner_account === 'object'
+        ? parsed.owner_account as OwnerAccount
+        : null,
       orders: Array.isArray(parsed.orders) ? parsed.orders as StoreOrder[] : [],
     },
   };
@@ -288,6 +306,49 @@ export async function updateBuyerInStore(username: string, updater: (buyer: Stor
 
 function normalizedEmail(value: string) {
   return value.trim().toLowerCase();
+}
+
+export async function findOwnerAccountInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  const { store } = await readStoreWithSha();
+  const owner = store.owner_account;
+  if (!owner || owner.status !== 'active' || normalizedEmail(owner.email) !== wanted) return null;
+  return owner;
+}
+
+/**
+ * Creates the one durable owner credential. This is deliberately create-only:
+ * the short-lived setup link cannot be replayed to replace a password later.
+ */
+export async function createOwnerAccountInStore(input: { email: string; password_hash: string }) {
+  const now = Date.now();
+  const email = normalizedEmail(input.email);
+  return mutateStore('Create UplineAgent owner credential', (store) => {
+    if (store.owner_account?.status === 'active') throw new Error('OWNER_ACCOUNT_EXISTS');
+    if (store.buyers.some((buyer) => normalizedEmail(buyer.username) === email) || store.portal_accounts.some((account) => normalizedEmail(account.email) === email)) {
+      throw new Error('OWNER_EMAIL_IN_USE');
+    }
+    const owner: OwnerAccount = {
+      email,
+      password_hash: input.password_hash,
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+    };
+    store.owner_account = owner;
+    return owner;
+  });
+}
+
+export async function markOwnerAccountLoginInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  return mutateStore('Update UplineAgent owner last login', (store) => {
+    const owner = store.owner_account;
+    if (!owner || normalizedEmail(owner.email) !== wanted || owner.status !== 'active') return null;
+    owner.last_login_at = Date.now();
+    owner.updated_at = Date.now();
+    return owner;
+  });
 }
 
 export async function createPortalAccountInStore(input: {

@@ -187,6 +187,15 @@ db.exec(`
     last_login_at integer
   );
 
+  create table if not exists owner_accounts (
+    email text primary key,
+    password_hash text not null,
+    status text not null default 'active',
+    created_at integer not null,
+    updated_at integer not null,
+    last_login_at integer
+  );
+
   create table if not exists lead_orders (
     id integer primary key autoincrement,
     buyer_code text not null,
