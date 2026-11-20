@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -25,7 +26,7 @@ function colLetter(n0: number) {
   return s;
 }
 
-export async function POST(req: Request) {
+async function updateLead(req: Request) {
   const denied = await requireOpsAccess(req, 'owner');
   if (denied) return denied;
   const body = await req.json().catch(() => null) as any;
@@ -38,12 +39,12 @@ export async function POST(req: Request) {
   if (keys.length === 0) return NextResponse.json({ error: 'no allowed fields in patch' }, { status: 400 });
 
   // Load headers and data to locate row index.
-  const headerResp = await gogJson(
+  const headerResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
     { account: ACCOUNT }
   );
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-  const dataResp = await gogJson(
+  const dataResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'],
     { account: ACCOUNT }
   );
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
   }
 
   const range = `MASTER_LEADS!${colLetter(minCol)}${rowIndex}:${colLetter(maxCol)}${rowIndex}`;
-  await gogJson(
+  await sheetsJson(
     [
       'sheets',
       'update',
@@ -90,3 +91,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, lead_id, rowIndex, updatedFields: keys });
 }
+
+export const POST = withApiErrorHandling('/api/ops/lead/update', updateLead);

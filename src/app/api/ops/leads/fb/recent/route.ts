@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireInternalAgent } from '@/lib/auth';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const FB_LEADS_SHEET_ID = '1VyR9uIaPPJjxXQqUle8RQZNWYdKn6G4_SN4fIrlMFKU';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const FB_LEADS_SHEET_ID = process.env.UPLINE_FB_LEADS_SHEET_ID?.trim() || '';
 
 function normPhone(v: string) {
   const digits = String(v || '').replace(/\D+/g, '');
@@ -24,7 +25,7 @@ function idx(headers: string[], name: string) {
   return -1;
 }
 
-export async function GET(req: Request) {
+async function getRecentFacebookLeads(req: Request) {
   try {
     await requireInternalAgent();
   } catch {
@@ -34,9 +35,9 @@ export async function GET(req: Request) {
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit') || 20)));
 
   // Read headers + rows from first tab.
-  const headerResp = await gogJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A1:AZ1'], { account: ACCOUNT });
+  const headerResp = await sheetsJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A1:AZ1'], { account: ACCOUNT });
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-  const dataResp = await gogJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A2:AZ5000'], { account: ACCOUNT });
+  const dataResp = await sheetsJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A2:AZ5000'], { account: ACCOUNT });
   const rows: string[][] = (dataResp.values ?? []) as string[][];
 
   const iName = idx(headers, 'name');
@@ -80,3 +81,5 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, sheetId: FB_LEADS_SHEET_ID, limit, leads: out, updatedAt: new Date().toISOString() });
 }
+
+export const GET = withApiErrorHandling('/api/ops/leads/fb/recent', getRecentFacebookLeads);

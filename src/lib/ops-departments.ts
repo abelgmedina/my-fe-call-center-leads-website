@@ -1,10 +1,7 @@
 import { headers } from 'next/headers';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { getDeptMode, setAgentStatus, setDeptMode } from '@/lib/db';
 import { internalOpsHeaders } from '@/lib/ops-access';
-
-const execAsync = promisify(exec);
+import { safeFetchJson } from '@/lib/safe-fetch';
 
 export type DeptHealth = 'healthy' | 'degraded' | 'down';
 export type DeptMode = 'normal' | 'isolated';
@@ -31,27 +28,27 @@ const META: Record<string, { name: string; lane: string; dependencies: string[] 
   sms_outbound: { name: 'SMS / Alerts', lane: 'sms', dependencies: ['public_edge'] },
   power_dialer: { name: 'Power Dialer Lane', lane: 'dialer', dependencies: ['sheets_router', 'public_edge'] },
   sheets_router: { name: 'Sheets Router', lane: 'data', dependencies: [] },
-  public_edge: { name: 'Public Edge / Tunnel', lane: 'edge', dependencies: [] },
+  public_edge: { name: 'Public Edge / Hosted URL', lane: 'edge', dependencies: [] },
 };
 
-const AUTO_REPAIRABLE = new Set(['agent_runtime', 'inbound_voice', 'ai_intake', 'queue_handoff', 'power_dialer', 'sms_outbound', 'sheets_router', 'public_edge']);
+const AUTO_REPAIRABLE = new Set(['agent_runtime', 'inbound_voice', 'ai_intake', 'queue_handoff', 'power_dialer', 'sms_outbound', 'sheets_router']);
 
 const RUNBOOKS: Record<string, string[]> = {
   inbound_voice: ['Refresh routing check', 'Confirm press-1 maps to agent_abel', 'Run live inbound test call'],
   agent_runtime: ['Set Abel to AVAILABLE', 'Re-register /take tab', 'Retest inbound accept'],
-  ai_intake: ['Run synthetic AI intake finish check', 'Verify handoff TwiML contains agent_abel', 'Retest full IVR path'],
-  queue_handoff: ['Validate no-answer short fallback', 'Confirm callback alert token generation', 'Run no-answer test call'],
+  ai_intake: ['Verify hosted callback configuration', 'Verify handoff TwiML in signed staging call', 'Retest full IVR path with a test number'],
+  queue_handoff: ['Validate no-answer short fallback with a signed staging call', 'Confirm callback alert token generation', 'Review the resulting call log'],
   sms_outbound: ['Check Twilio SMS env health', 'Verify alert send path', 'Fallback to voice-only if SMS degraded'],
   power_dialer: ['Refresh queue API', 'Isolate dialer if causing incident', 'Restore after queue health returns'],
   sheets_router: ['Check sheet header health', 'Verify read/write latency', 'Degrade to voice-only if sheets down'],
-  public_edge: ['Check /take public endpoint', 'Restart ngrok reserved tunnel', 'Re-run /take and webhook smoke tests'],
+  public_edge: ['Check /api/health on the hosted deployment', 'Confirm PUBLIC_BASE_URL uses the hosted staging URL', 'Run a signed Twilio staging callback after credentials are configured'],
 };
 
-async function selfBaseUrl() {
+async function selfBaseUrl(): Promise<string | null> {
   const h: any = await (headers() as any);
   const host = h?.get?.('host') ?? h?.host;
   const proto = (h?.get?.('x-forwarded-proto') ?? h?.['x-forwarded-proto']) || 'http';
-  if (!host) throw new Error('Missing host header');
+  if (!host) return null;
   return `${proto}://${host}`;
 }
 
@@ -72,7 +69,15 @@ function withMeta(id: string, health: DeptHealth, summary: string, checkedAt: st
   };
 }
 
-async function check(base: string, id: string): Promise<DepartmentStatus> {
+function twilioConfigured() {
+  return ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN'].every((key) => Boolean(process.env[key]?.trim()));
+}
+
+function sheetsConfigured() {
+  return ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY', 'UPLINE_SHEETS_SPREADSHEET_ID'].every((key) => Boolean(process.env[key]?.trim()));
+}
+
+async function check(base: string | null, id: string): Promise<DepartmentStatus> {
   const now = new Date().toISOString();
   const opsHeaders = internalOpsHeaders();
 
@@ -81,70 +86,92 @@ async function check(base: string, id: string): Promise<DepartmentStatus> {
   }
 
   try {
+    if (!base) return withMeta(id, 'down', 'Hosted URL could not be determined for this request.', now);
+
     if (id === 'inbound_voice') {
-      const r = await fetch(`${base}/api/twilio/voice/inbound?step=lang&callSid=HEALTHCHECK_INBOUND&from=%2B15555550123`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: 'Digits=1',
-        cache: 'no-store',
-      });
-      const text = await r.text();
-      return withMeta(id, r.ok && text.includes('<Client>agent_abel</Client>') ? 'healthy' : 'down', r.ok ? 'Press-1 routes to Abel' : 'Inbound route not targeting Abel', now);
+      const configured = twilioConfigured() && Boolean(process.env.PUBLIC_BASE_URL?.trim());
+      return withMeta(
+        id,
+        configured ? 'degraded' : 'down',
+        configured ? 'Hosted callback configuration present; awaiting signed staging call.' : 'Twilio credentials or hosted callback URL are not configured.',
+        now
+      );
     }
 
     if (id === 'agent_runtime') {
-      const r = await fetch(`${base}/api/ops/agents`, { cache: 'no-store', headers: opsHeaders });
-      const data = await r.json();
-      const abel = (data.agents || []).find((a: any) => a.id === 'abel');
+      const result = await safeFetchJson<{ agents?: Array<{ id?: string; status?: string }> }>(`${base}/api/ops/agents`, {
+        cache: 'no-store',
+        headers: opsHeaders,
+      });
+      if (!result.ok) return withMeta(id, 'degraded', 'Agent runtime status is unavailable.', now);
+      const abel = (result.data.agents || []).find((agent) => agent.id === 'abel');
       const ok = !!abel && abel.status === 'AVAILABLE';
       return withMeta(id, ok ? 'healthy' : 'degraded', ok ? 'Abel is registered/available' : `Abel status is ${abel?.status || 'unknown'}`, now);
     }
 
     if (id === 'ai_intake') {
-      const r = await fetch(`${base}/api/twilio/voice/ai-intake?step=finish&lang=en&callSid=HEALTHCHECK_AI&from=%2B15555550123`, {
-        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'Digits=1', cache: 'no-store',
-      });
-      const text = await r.text();
-      return withMeta(id, r.ok && text.includes('<Client>agent_abel</Client>') ? 'healthy' : 'degraded', r.ok ? 'AI intake hands off to Abel when available' : 'AI intake handoff path degraded', now);
+      const configured = twilioConfigured() && sheetsConfigured() && Boolean(process.env.PUBLIC_BASE_URL?.trim());
+      return withMeta(
+        id,
+        configured ? 'degraded' : 'down',
+        configured ? 'Hosted AI intake dependencies configured; awaiting signed staging call.' : 'AI intake dependencies are not configured.',
+        now
+      );
     }
 
     if (id === 'queue_handoff') {
-      const r = await fetch(`${base}/api/twilio/voice/dial-status?attempt=2&agent=abel&callSid=HEALTHCHECK_DIAL&from=%2B15555550123`, {
-        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: 'DialCallStatus=no-answer&From=%2B15555550123&CallSid=HEALTHCHECK_DIAL', cache: 'no-store',
-      });
-      const text = await r.text();
-      // We accept either the busy-menu redirect (preferred) or a callback message.
-      const ok = r.ok && (text.includes('/api/twilio/voice/busy-menu') || text.toLowerCase().includes('call back') || text.toLowerCase().includes('call you back'));
-      return withMeta(id, ok ? 'healthy' : 'degraded', 'Short no-answer fallback flow check', now);
+      const configured = twilioConfigured() && Boolean(process.env.PUBLIC_BASE_URL?.trim());
+      return withMeta(
+        id,
+        configured ? 'degraded' : 'down',
+        configured ? 'Fallback dependencies configured; awaiting signed staging call.' : 'Fallback dependencies are not configured.',
+        now
+      );
     }
 
     if (id === 'sheets_router' || id === 'sms_outbound') {
-      const r = await fetch(`${base}/api/ops/health`, { cache: 'no-store', headers: opsHeaders });
-      const data = await r.json();
-      const checks = data.checks || [];
-      const twilioOk = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_SMS_FROM'].every((k) => checks.find((c: any) => c.name === `env:${k}`)?.ok);
-      const sheetsOk = !!checks.find((c: any) => c.name === 'sheets:abel_active_headers')?.ok;
-      if (id === 'sheets_router') return withMeta(id, sheetsOk ? 'healthy' : 'down', sheetsOk ? 'Google Sheets path healthy' : 'Sheets check failing', now);
-      return withMeta(id, twilioOk ? 'healthy' : 'down', twilioOk ? 'Twilio SMS env/checks healthy' : 'Twilio SMS env/checks failing', now);
+      if (id === 'sheets_router') {
+        const configured = sheetsConfigured();
+        return withMeta(
+          id,
+          configured ? 'degraded' : 'down',
+          configured ? 'Hosted Sheets credentials configured; provider read is not yet verified.' : 'Hosted Sheets credentials are not configured.',
+          now
+        );
+      }
+      const configured = twilioConfigured() && Boolean(process.env.TWILIO_SMS_FROM?.trim());
+      return withMeta(
+        id,
+        configured ? 'degraded' : 'down',
+        configured ? 'Twilio SMS configuration present; provider delivery is not yet verified.' : 'Twilio SMS configuration is not complete.',
+        now
+      );
     }
 
     if (id === 'power_dialer') {
-      const r = await fetch(`${base}/api/ops/call/queue`, { cache: 'no-store', headers: opsHeaders });
-      const data = await r.json();
-      const grouped = data.grouped || {};
+      const result = await safeFetchJson<{ grouped?: Record<string, unknown[]> }>(`${base}/api/ops/call/queue`, {
+        cache: 'no-store',
+        headers: opsHeaders,
+      });
+      if (!result.ok) return withMeta(id, 'down', 'Queue API is unavailable; dialer is safely blocked.', now);
+      const grouped = result.data.grouped || {};
       const queueCount = Object.values(grouped).reduce((n: number, arr: any) => n + (arr?.length || 0), 0);
-      return withMeta(id, r.ok ? 'healthy' : 'down', `Queue API reachable (${queueCount} visible queued leads)`, now);
+      return withMeta(id, 'healthy', `Queue API reachable (${queueCount} visible queued leads)`, now);
     }
 
     if (id === 'public_edge') {
-      const r = await fetch(`${base}/take`, { cache: 'no-store' });
-      return withMeta(id, r.ok ? 'healthy' : 'down', r.ok ? 'Public /take endpoint responding' : 'Public /take endpoint not reachable', now);
+      const result = await safeFetchJson<{ ok?: boolean }>(`${base}/api/health`, { cache: 'no-store' });
+      return withMeta(
+        id,
+        result.ok && result.data.ok ? 'healthy' : 'down',
+        result.ok && result.data.ok ? 'Hosted application health endpoint responding' : 'Hosted application health endpoint is unavailable',
+        now
+      );
     }
 
     return withMeta(id, 'degraded', 'Unknown department', now);
-  } catch (e: any) {
-    return withMeta(id, 'down', `Check failed: ${e?.message || 'unknown error'}`, now);
+  } catch {
+    return withMeta(id, 'down', 'Check failed. Review the structured server logs using the request ID.', now);
   }
 }
 
@@ -193,19 +220,7 @@ export async function runDepartmentAction(id: string, action: 'refresh' | 'repai
     return { ok: true, note: `${META[id].name} repair applied: mode restored to NORMAL.` };
   }
 
-  if (id === 'public_edge') {
-    try {
-      const url = process.env.PUBLIC_BASE_URL || '';
-      const host = url.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      if (!host) return { ok: false, note: 'PUBLIC_BASE_URL not set; cannot auto-restart tunnel.' };
-      await execAsync(`pkill -f "ngrok http --url=${host} 3001" || true`);
-      await execAsync(`nohup ngrok http --url=${host} 3001 >/tmp/fe-ngrok.log 2>&1 &`);
-      setDeptMode(id, 'normal');
-      return { ok: true, note: `Public edge repair attempted: restarted ngrok for ${host}.` };
-    } catch (e: any) {
-      return { ok: false, note: `Public edge repair failed: ${e?.message || 'unknown error'}` };
-    }
-  }
+  if (id === 'public_edge') return { ok: false, note: 'Hosted deployment repairs are manual; no local tunnel process is managed by this app.' };
 
   return { ok: false, note: `${META[id].name} has no repair automation yet.` };
 }

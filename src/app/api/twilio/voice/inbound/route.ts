@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { db } from '@/lib/db';
-import { publicBaseUrl } from '@/lib/twilio';
+import { parseVerifiedTwilioWebhook, publicBaseUrl } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -12,15 +12,12 @@ function xml(res: twilio.twiml.VoiceResponse) {
 }
 
 export async function POST(req: Request) {
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
   const { searchParams } = new URL(req.url);
   const step = String(searchParams.get('step') ?? '');
-
-  let form: FormData | null = null;
-  try {
-    form = await req.formData();
-  } catch {
-    form = null;
-  }
+  const form = verified.form;
   const from = String(form?.get('From') ?? searchParams.get('from') ?? '');
   const callSid = String(form?.get('CallSid') ?? searchParams.get('callSid') ?? '');
 

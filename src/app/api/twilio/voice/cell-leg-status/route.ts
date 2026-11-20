@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
 import { setAgentCallContext, setAgentStatus } from '@/lib/db';
+import { parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
 // Twilio <Number> statusCallback for the forwarded-to-cell leg.
 export async function POST(req: Request) {
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
   const { searchParams } = new URL(req.url);
   const agent = String(searchParams.get('agent') || 'abel').trim();
   const parentCallSid = String(searchParams.get('parentCallSid') || '').trim();
 
-  const form = await req.formData().catch(() => null);
+  const form = verified.form;
   const callStatus = String(form?.get('CallStatus') ?? '').trim().toLowerCase();
   const callSid = String(form?.get('CallSid') ?? '').trim();
 
