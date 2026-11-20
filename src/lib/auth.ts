@@ -188,6 +188,25 @@ export function getAgents(): AgentConfig[] {
   return parsed as AgentConfig[];
 }
 
+function configuredOwnerAgent() {
+  const configured = getAgents().find((agent) => agent.id === 'abel' && (!agent.role || agent.role === 'internal'));
+  if (configured) return configured;
+
+  // The durable owner credential is the authentication boundary. Keep a
+  // minimal internal principal available after that credential verifies so a
+  // stale or incomplete legacy agent JSON cannot lock the owner out.
+  const email = configuredOwnerEmail();
+  if (!email) return null;
+  return {
+    id: 'abel',
+    name: 'Abel',
+    lang: 'en' as const,
+    username: email,
+    password: '',
+    role: 'internal' as const,
+  };
+}
+
 export async function setSession(payload: SessionInput) {
   const now = Date.now();
   let sessionInput = payload;
@@ -265,8 +284,14 @@ export async function requireAgent(): Promise<AgentConfig | BuyerPrincipal> {
 
   if (sess.kind === 'env') {
     const agent = getAgents().find((a) => a.id === sess.agentId);
-    if (!agent) throw new Error('UNAUTHENTICATED');
-    return agent;
+    if (agent) return agent;
+
+    if (sess.agentId === 'abel') {
+      const owner = configuredOwnerAgent();
+      const currentVersion = await currentOwnerSessionVersion();
+      if (owner && currentVersion !== null && sess.ownerSessionVersion === currentVersion) return owner;
+    }
+    throw new Error('UNAUTHENTICATED');
   }
 
   return {
@@ -316,7 +341,7 @@ async function verifyConfiguredOwnerLogin(login: string, password: string) {
   const ownerEmail = configuredOwnerEmail();
   if (!ownerEmail || normalizedEmail(login) !== ownerEmail) return null;
 
-  const ownerAgent = getAgents().find((agent) => agent.id === 'abel' && (!agent.role || agent.role === 'internal'));
+  const ownerAgent = configuredOwnerAgent();
   if (!ownerAgent) return null;
 
   const { verifyPassword } = await import('@/lib/passwords');
