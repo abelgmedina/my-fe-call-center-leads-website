@@ -38,7 +38,26 @@ type Payload = {
   graph?: GraphNode[];
   alerts?: AlertEvent[];
   updatedAt: string;
+  loadError?: string;
+  appHealth?: { ok?: boolean; status?: string; now?: string; requestId?: string } | null;
+  dependencyHealth?: {
+    ok?: boolean;
+    status?: string;
+    checks?: Array<{ name?: string; state?: string; detail?: string; missing?: string[] }>;
+    now?: string;
+    requestId?: string;
+  } | null;
 };
+
+async function readJson(response: Response) {
+  const text = await response.text().catch(() => '');
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text) as any;
+  } catch {
+    return null;
+  }
+}
 
 function badge(health: Dept['health']) {
   if (health === 'healthy') return 'border-green-600/30 bg-green-600/10 text-green-300';
@@ -62,14 +81,24 @@ export function OpsAdminPanel({ initial }: { initial: Payload }) {
   }, [data]);
 
   async function reload() {
-    const [resA, resB] = await Promise.all([
+    const [resA, resB, appHealthRes, dependencyHealthRes] = await Promise.all([
       fetch('/api/ops/departments', { cache: 'no-store' }),
       fetch('/api/ops/departments/alerts?limit=20', { cache: 'no-store' }),
+      fetch('/api/health', { cache: 'no-store' }),
+      fetch('/api/health/deps', { cache: 'no-store' }),
     ]);
-    const next = await resA.json();
-    const alertPayload = await resB.json();
-    setData(next);
-    setAlerts(alertPayload.alerts || []);
+    const [next, alertPayload, appHealth, dependencyHealth] = await Promise.all([
+      readJson(resA),
+      readJson(resB),
+      readJson(appHealthRes),
+      readJson(dependencyHealthRes),
+    ]);
+    if (!resA.ok || !next) {
+      setNote(next?.error || `Department refresh failed (HTTP ${resA.status}).`);
+      return;
+    }
+    setData({ ...next, appHealth: appHealthRes.ok ? appHealth : null, dependencyHealth });
+    setAlerts(alertPayload?.alerts || []);
   }
 
   async function runAlertSweep() {
@@ -77,7 +106,7 @@ export function OpsAdminPanel({ initial }: { initial: Payload }) {
     setNote('');
     try {
       const res = await fetch('/api/ops/departments/alerts', { method: 'POST' });
-      const out = await res.json();
+      const out = await readJson(res);
       if (!res.ok) throw new Error(out?.error || `HTTP ${res.status}`);
       setAlerts(out.events || []);
       setNote(`Alert sweep complete. Changes: ${out.changed || 0}. SMS notified: ${out.notified ? 'yes' : 'no'}.`);
@@ -97,9 +126,14 @@ export function OpsAdminPanel({ initial }: { initial: Payload }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id, action }),
       });
-      const out = await res.json();
+      const out = await readJson(res);
       if (!res.ok) throw new Error(out?.error || `HTTP ${res.status}`);
-      setData({ departments: out.departments, graph: out.graph, updatedAt: out.updatedAt });
+      setData((current) => ({
+        ...current,
+        departments: out.departments,
+        graph: out.graph,
+        updatedAt: out.updatedAt,
+      }));
       setNote(out?.result?.note || 'Done');
     } catch (e: any) {
       setNote(e?.message || 'Action failed');
@@ -134,6 +168,37 @@ export function OpsAdminPanel({ initial }: { initial: Payload }) {
       </div>
 
       {note ? <div className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-neutral-300">{note}</div> : null}
+      {data.loadError ? <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">{data.loadError}</div> : null}
+
+      <section className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Hosted Health</h2>
+            <p className="mt-1 text-xs text-neutral-500">App liveness is public; dependency state remains internal-only.</p>
+          </div>
+          <div className="flex gap-2 text-xs">
+            <span className={`rounded-md border px-2 py-1 font-semibold ${data.appHealth?.ok ? badge('healthy') : badge('down')}`}>
+              APP: {(data.appHealth?.status || 'unavailable').toUpperCase()}
+            </span>
+            <span className={`rounded-md border px-2 py-1 font-semibold ${data.dependencyHealth?.ok ? badge('healthy') : badge('degraded')}`}>
+              DEPS: {(data.dependencyHealth?.status || 'restricted').toUpperCase()}
+            </span>
+          </div>
+        </div>
+        {data.dependencyHealth?.checks?.length ? (
+          <div className="mt-3 grid gap-2 md:grid-cols-2 text-xs text-neutral-300">
+            {data.dependencyHealth.checks.map((check) => (
+              <div key={check.name} className="rounded-md border border-neutral-800 p-2">
+                <span className="font-semibold">{check.name}</span>{' '}
+                <span className="text-neutral-500">{check.state || 'unknown'}</span>
+                <div className="mt-1 text-neutral-400">{check.detail || 'No detail provided.'}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 text-xs text-neutral-500">Dependency details are unavailable until internal health access is configured.</div>
+        )}
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2">
         {data.departments.map((d) => (

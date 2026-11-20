@@ -1,17 +1,30 @@
-# Twilio Call Center (MVP)
+# UplineAgent — hosted CRM rebuild
 
-Single-agent call center prototype:
+This repository is the `uplineagent.com` CRM rebuild. It is currently in P0
+stabilization: the existing portal and Ops tools remain intact while local-only
+runtime dependencies are removed.
 
-- Inbound calls to a Twilio number
-- If you are `AVAILABLE`: Twilio rings your **browser** (WebRTC)
-- If you are `AWAY/BREAK/OFF_WORK`: caller is placed on **hold queue**, and you get an **SMS** with a **magic link**
-- Tap the link (mobile OK) → **Prepare device** (mic permission) → **Take oldest waiting call**
+## P0 operating rules
+
+- The app runs on a hosted Next.js/Vercel deployment. It never starts, kills,
+  or relies on a local tunnel process.
+- Google Sheets access uses a hosted Google service account when configured.
+  When it is not configured, Ops views render an explicit unavailable state and
+  calls/messages remain blocked; they never show invented data.
+- Incoming Twilio callbacks require a valid signature and a hosted HTTPS
+  `PUBLIC_BASE_URL` before making state changes.
+- Preview/staging deployments are safe. Do not repoint live Twilio numbers,
+  alter DNS, buy numbers, submit A2P registration, or change billing without
+  Abel's specific approval.
 
 ## Prereqs
 
-- Node 20+
-- A Twilio account
-- A publicly reachable **HTTPS** URL for Twilio webhooks (ngrok is easiest)
+- Node 24.x (the Vercel runtime target)
+- A Vercel project linked to this repository for preview/staging
+- For live Sheets sync: a Google service account with access to the intended
+  spreadsheet, configured only in the hosting secret store
+- For callback testing: Twilio test credentials/test numbers and a hosted
+  staging URL; do not use a local tunnel
 
 ## Setup
 
@@ -33,7 +46,9 @@ Fill in:
 - `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` (Twilio Console → API Keys)
 - `TWILIO_SMS_FROM` (a Twilio number that can send SMS)
 - `ALERT_TO` (your personal phone in E.164)
-- `PUBLIC_BASE_URL` (your https ngrok URL)
+- `PUBLIC_BASE_URL` (the hosted HTTPS preview or staging URL)
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, and
+  `UPLINE_SHEETS_SPREADSHEET_ID` only when hosted Sheets sync is approved
 
 3) Run locally
 
@@ -41,32 +56,31 @@ Fill in:
 npm run dev
 ```
 
-4) Start ngrok
-
-```bash
-ngrok http 3000
-```
-
-Copy the **https** forwarding URL into `PUBLIC_BASE_URL`.
+4) For integration testing, deploy a Vercel **preview** and set
+`PUBLIC_BASE_URL` to that preview/staging hostname in the hosting secret store.
+Local development is for UI and unit tests only; live callbacks must target a
+hosted HTTPS endpoint.
 
 ## Twilio Console configuration
 
-### 1) Buy/choose a Twilio phone number
-Twilio Console → Phone Numbers → Manage → Active numbers.
+### Staging callback configuration only
 
-### 2) Set the inbound voice webhook
-In your number settings, under **Voice & Fax**:
+Use a Twilio test number only after its credentials and a hosted staging URL
+have been placed in the secret store. In the number settings under **Voice &
+Fax**, configure the staging callback URL:
 
 - A CALL COMES IN → Webhook
 - URL:
 
 ```
-https://YOUR_PUBLIC_BASE_URL/api/twilio/voice/inbound
+https://YOUR_HOSTED_STAGING_URL/api/twilio/voice/inbound
 ```
 
 - Method: **POST**
 
-### 3) SMS capability
+Do **not** change any live number's callback URL without explicit approval.
+
+### SMS capability
 To receive alerts, ensure:
 
 - `TWILIO_SMS_FROM` is a Twilio number with SMS enabled
@@ -74,7 +88,7 @@ To receive alerts, ensure:
 
 ## Usage
 
-- Open: `https://YOUR_PUBLIC_BASE_URL/agent`
+- Open the hosted deployment at `/agent`
 - Tap **Init / Register** and grant mic permission.
 - Set status to **Available**.
 
@@ -85,13 +99,15 @@ When you’re not available:
 
 ## Notes / safety
 
-- This MVP does **not** validate Twilio webhook signatures.
-- Magic link is single-use + 10 minute expiry, but there is no user login yet.
-- Mobile WebRTC can be finicky (keep page in foreground).
+- Twilio callback signatures are validated before a webhook can change state.
+- The legacy local SQLite runtime is still not a durable CRM datastore; moving
+  the system of record to Postgres is a separate P0/P1 gate.
+- Browser phone, inbound routing, and dialer workflows stay gated until hosted
+  credentials, durable data, compliance controls, and staging tests are in place.
 
 ## Next improvements
 
-- Validate Twilio signatures
-- Real auth + per-agent identities
-- Better queue UX (wait time, periodic announcements)
-- Call recording / voicemail
+- Provision a dedicated preview/production Postgres project and migrations
+- Configure hosted Sheets sync or a one-way export path
+- Run signed Twilio staging callbacks with test numbers
+- Continue P1 role hierarchy and core CRM modules

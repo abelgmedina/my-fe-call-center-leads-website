@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { tzForState, localParts, nextBucketIso } from '@/lib/timezones';
 import { parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || 'hosted-service-account';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -82,12 +82,12 @@ export async function POST(req: Request) {
     const next = nextBucketIso(tz, bucket);
 
     // Update sheet: status, next_action_at, last_outcome
-    const headerResp = await gogJson(
+    const headerResp = await sheetsJson(
       ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
       { account: ACCOUNT }
     );
     const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-    const dataResp = await gogJson(
+    const dataResp = await sheetsJson(
       ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'],
       { account: ACCOUNT }
     );
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     }
 
     const range = `MASTER_LEADS!${colLetter(minCol)}${rowIndex}:${colLetter(maxCol)}${rowIndex}`;
-    await gogJson(
+    await sheetsJson(
       ['sheets', 'update', ABEL_ACTIVE_SHEET_ID, range, '--values-json', JSON.stringify([values]), '--input', 'USER_ENTERED'],
       { account: ACCOUNT }
     );

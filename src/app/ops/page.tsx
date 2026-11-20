@@ -5,35 +5,43 @@ export const dynamic = 'force-dynamic';
 
 import { headers } from 'next/headers';
 import { currentRequestAuthHeaders } from '@/lib/request-auth';
+import { safeFetchJson } from '@/lib/safe-fetch';
 
-async function baseUrl() {
+type Summary = {
+  counts: Record<string, number>;
+  appointments: Array<{ start: string; end: string; name: string; phone: string; state: string }>;
+  updatedAt: string;
+};
+
+async function baseUrl(): Promise<string | null> {
   const h: any = await (headers() as any);
   const host = h?.get?.('host') ?? h?.host;
   const proto = (h?.get?.('x-forwarded-proto') ?? h?.['x-forwarded-proto']) || 'http';
-  if (!host) throw new Error('Missing host header');
+  if (!host) return null;
   return `${proto}://${host}`;
 }
 
 async function getSummary() {
-  const url = `${await baseUrl()}/api/ops/summary`;
-  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
-  if (!res.ok) throw new Error(`Failed to load ops summary: ${res.status}`);
-  return res.json();
+  const base = await baseUrl();
+  if (!base) return { ok: false as const, message: 'The request host could not be determined.' };
+  return safeFetchJson<Summary>(`${base}/api/ops/summary`, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
 }
 
-function Tile({ label, value }: { label: string; value: number }) {
+function Tile({ label, value }: { label: string; value?: number }) {
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
       <div className="text-xs text-neutral-400">{label}</div>
-      <div className="mt-1 text-3xl font-semibold">{value}</div>
+      <div className="mt-1 text-3xl font-semibold">{typeof value === 'number' ? value : '—'}</div>
     </div>
   );
 }
 
 export default async function OpsPage() {
-  const summary = await getSummary();
-  const c = summary.counts as Record<string, number>;
-  const appts = summary.appointments as Array<any>;
+  const result = await getSummary();
+  const summary = result.ok ? result.data : null;
+  const failureMessage = result.ok ? '' : result.message;
+  const c = summary?.counts || {};
+  const appts = summary?.appointments || [];
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -41,7 +49,9 @@ export default async function OpsPage() {
         <div>
           <div className="text-xs font-semibold tracking-wide text-neutral-400">UplineAgent • Ops</div>
           <h1 className="mt-1 text-2xl font-semibold">Dashboard</h1>
-          <div className="mt-1 text-xs text-neutral-500">Updated {new Date(summary.updatedAt).toLocaleString()}</div>
+          <div className="mt-1 text-xs text-neutral-500">
+            {summary ? `Updated ${new Date(summary.updatedAt).toLocaleString()}` : 'Operational data is currently unavailable'}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:border-emerald-400/40" href="/agent">Inbound Calls Screen</Link>
@@ -54,11 +64,19 @@ export default async function OpsPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Tile label="Transfer Now" value={c.QUALIFIED_TRANSFER_NOW || 0} />
-        <Tile label="Callbacks (CALL_APPT_SET)" value={c.CALL_APPT_SET || 0} />
-        <Tile label="SMS Hot" value={c.SMS_HOT || 0} />
-        <Tile label="Opt Out" value={c.OPT_OUT || 0} />
+        <Tile label="Transfer Now" value={summary ? c.QUALIFIED_TRANSFER_NOW || 0 : undefined} />
+        <Tile label="Callbacks (CALL_APPT_SET)" value={summary ? c.CALL_APPT_SET || 0 : undefined} />
+        <Tile label="SMS Hot" value={summary ? c.SMS_HOT || 0 : undefined} />
+        <Tile label="Opt Out" value={summary ? c.OPT_OUT || 0 : undefined} />
       </div>
+
+      {!summary ? (
+        <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="font-semibold">Ops data is unavailable</div>
+          <p className="mt-1 text-amber-100/80">{failureMessage}</p>
+          <p className="mt-1 text-xs text-amber-100/70">No lead counts or appointments are shown until the hosted data adapter is configured.</p>
+        </div>
+      ) : null}
 
       <section className="mt-8">
         <div className="flex items-center justify-between">
@@ -77,7 +95,13 @@ export default async function OpsPage() {
               </tr>
             </thead>
             <tbody>
-              {appts.length === 0 ? (
+              {!summary ? (
+                <tr>
+                  <td className="p-4 text-sm text-neutral-500" colSpan={4}>
+                    Appointment data is unavailable.
+                  </td>
+                </tr>
+              ) : appts.length === 0 ? (
                 <tr>
                   <td className="p-4 text-sm text-neutral-500" colSpan={4}>
                     No appointments found.

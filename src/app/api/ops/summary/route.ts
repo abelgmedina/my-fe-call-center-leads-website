@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || 'hosted-service-account';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -13,17 +14,17 @@ function idx(headers: string[], name: string) {
   return i;
 }
 
-export async function GET(req: Request) {
+async function getSummary(req: Request) {
   const denied = await requireOpsAccess(req, 'owner');
   if (denied) return denied;
-  const headerResp = await gogJson(
+  const headerResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
     { account: ACCOUNT }
   );
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
   if (!headers.length) throw new Error('No headers found');
 
-  const dataResp = await gogJson(
+  const dataResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'],
     { account: ACCOUNT }
   );
@@ -72,3 +73,5 @@ export async function GET(req: Request) {
     updatedAt: new Date().toISOString(),
   });
 }
+
+export const GET = withApiErrorHandling('/api/ops/summary', getSummary);

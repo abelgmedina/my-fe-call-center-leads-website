@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { db, getAgentStatus } from '@/lib/db';
 import { createTakeToken, sendWaitingSmsAlert } from '@/lib/alerts';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { tzForState, localParts } from '@/lib/timezones';
 import { parseVerifiedTwilioWebhook, publicBaseUrl } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || 'hosted-service-account';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function xml(res: twilio.twiml.VoiceResponse) {
   return new NextResponse(res.toString(), { headers: { 'Content-Type': 'text/xml' } });
@@ -81,9 +81,9 @@ function colLetter(n0: number) {
 
 async function updateLeadByPhone(params: { phone: string; summary: string; nextActionIso: string; name?: string; callSid?: string }) {
   // Find lead row by phone_primary (simple v1; if duplicates, updates first match)
-  const headerResp = await gogJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'], { account: ACCOUNT });
+  const headerResp = await sheetsJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'], { account: ACCOUNT });
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-  const dataResp = await gogJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'], { account: ACCOUNT });
+  const dataResp = await sheetsJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'], { account: ACCOUNT });
   const rows: string[][] = (dataResp.values ?? []) as string[][];
 
   const iPhone = idx(headers, 'phone_primary');
@@ -128,7 +128,7 @@ async function updateLeadByPhone(params: { phone: string; summary: string; nextA
     setIf('owner', 'Abel');
     setIf('language', 'en');
 
-    await gogJson(
+    await sheetsJson(
       [
         'sheets',
         'append',
@@ -163,7 +163,7 @@ async function updateLeadByPhone(params: { phone: string; summary: string; nextA
   }
 
   const range = `MASTER_LEADS!${colLetter(minCol)}${rowIndex}:${colLetter(maxCol)}${rowIndex}`;
-  await gogJson(['sheets', 'update', ABEL_ACTIVE_SHEET_ID, range, '--values-json', JSON.stringify([values]), '--input', 'USER_ENTERED'], { account: ACCOUNT });
+  await sheetsJson(['sheets', 'update', ABEL_ACTIVE_SHEET_ID, range, '--values-json', JSON.stringify([values]), '--input', 'USER_ENTERED'], { account: ACCOUNT });
 
   // Best-effort: if full_name is blank and we collected a name, set it.
   try {
@@ -171,7 +171,7 @@ async function updateLeadByPhone(params: { phone: string; summary: string; nextA
       const existingName = String((rows[rowIndex - 2] || [])[iName] ?? '').trim();
       if (!existingName) {
         const r2 = `MASTER_LEADS!${colLetter(iName)}${rowIndex}:${colLetter(iName)}${rowIndex}`;
-        await gogJson(['sheets', 'update', ABEL_ACTIVE_SHEET_ID, r2, '--values-json', JSON.stringify([[params.name]]), '--input', 'USER_ENTERED'], { account: ACCOUNT });
+        await sheetsJson(['sheets', 'update', ABEL_ACTIVE_SHEET_ID, r2, '--values-json', JSON.stringify([[params.name]]), '--input', 'USER_ENTERED'], { account: ACCOUNT });
       }
     }
   } catch {}
