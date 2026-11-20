@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getTwilioClient } from '@/lib/twilio';
+import { requireOpsAccess } from '@/lib/ops-access';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -10,6 +11,8 @@ export const runtime = 'nodejs';
  * Logs call_events with call_type=POWER_DIALER (so status-callback auto-disposition does NOT run).
  */
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as any;
   const to = String(body?.to || '').trim();
   const lead_id = body?.lead_id ? String(body.lead_id).trim() : null;

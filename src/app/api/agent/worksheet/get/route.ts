@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
-    await requireAgent();
+    await requireInternalAgent();
   } catch {
     return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
   }

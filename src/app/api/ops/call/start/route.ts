@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTwilioClient } from '@/lib/twilio';
 import { db } from '@/lib/db';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -60,6 +61,8 @@ function bucketForHour(h: number): 'morning' | 'afternoon' | 'evening' | null {
  * Body: { to: "+1...", lead_id?: string, state?: string }
  */
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as any;
   const to = String(body?.to || '').trim();
   const lead_id = body?.lead_id ? String(body.lead_id).trim() : null;

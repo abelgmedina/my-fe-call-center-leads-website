@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -25,6 +26,8 @@ function colLetter(n0: number) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = await req.json().catch(() => null) as any;
   const lead_id = (body?.lead_id || '').trim();
   if (!lead_id) return NextResponse.json({ error: 'lead_id required' }, { status: 400 });

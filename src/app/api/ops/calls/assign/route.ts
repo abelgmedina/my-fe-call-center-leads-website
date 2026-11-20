@@ -1,21 +1,16 @@
 import { NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/auth';
+import { requireOwner } from '@/lib/auth';
 import { assignBuyer } from '@/lib/ledger';
 
 export const runtime = 'nodejs';
 
-function isManager(agentId: string) {
-  return agentId === 'abel';
-}
-
 export async function POST(req: Request) {
-  let me: any;
+  let me;
   try {
-    me = await requireAgent();
+    me = await requireOwner();
   } catch {
-    return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
   }
-  if (!isManager(me.id)) return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
 
   const body = (await req.json().catch(() => null)) as any;
   const call_sid = String(body?.call_sid || '').trim();

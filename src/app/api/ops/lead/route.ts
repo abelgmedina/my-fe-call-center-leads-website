@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -13,6 +14,8 @@ function idx(headers: string[], name: string) {
 }
 
 export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const leadId = (searchParams.get('lead_id') || '').trim();
   if (!leadId) return NextResponse.json({ error: 'lead_id required' }, { status: 400 });

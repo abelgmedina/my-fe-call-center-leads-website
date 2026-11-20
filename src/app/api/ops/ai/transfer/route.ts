@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { gogJson } from '@/lib/gog';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -31,6 +32,8 @@ function colLetter(n0: number) {
  * Body: { lead_id, from_number?, to_number?, callSid?, qualification_summary }
  */
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as any;
   const lead_id = String(body?.lead_id || '').trim();
   const qualification_summary = String(body?.qualification_summary || '').trim();

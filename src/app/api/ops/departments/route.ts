@@ -1,15 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getDepartmentStatuses, getDependencyGraph, runDepartmentAction } from '@/lib/ops-departments';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const departments = await getDepartmentStatuses();
   const graph = getDependencyGraph();
   return NextResponse.json({ ok: true, departments, graph, updatedAt: new Date().toISOString() });
 }
 
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const body = (await req.json().catch(() => null)) as { id?: string; action?: 'refresh' | 'repair' | 'isolate' | 'restore' } | null;
   const id = String(body?.id || '');
   const action = body?.action;

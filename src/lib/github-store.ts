@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 type StoreRequest = {
   id: number;
   full_name: string;
@@ -46,6 +48,46 @@ type StoreBuyer = {
   last_login_at?: number;
 };
 
+// These are deliberately separate from buyers and internal agents. A portal
+// account is allowed to use only the restricted self-service workspace; it is
+// never a Twilio identity, lead buyer, or ops principal.
+export type PortalAccount = {
+  id: string;
+  email: string;
+  full_name?: string;
+  password_hash: string;
+  status: 'active' | 'disabled';
+  phone?: string;
+  npn?: string;
+  residence_state?: string;
+  license_state?: string;
+  agency_name?: string;
+  sales_model?: string;
+  created_at: number;
+  updated_at: number;
+  last_login_at?: number;
+};
+
+// The owner credential is intentionally separate from buyer and portal
+// accounts. It only resolves to the already-configured internal `abel` agent
+// after the login code verifies it, so a public portal account can never be
+// promoted into telephony or operations access.
+export type OwnerAccount = {
+  email: string;
+  password_hash: string;
+  status: 'active' | 'disabled';
+  // A password reset increments this value. Owner sessions carry the value
+  // they were issued with, so resetting a password invalidates old owner
+  // sessions without affecting buyer or restricted portal accounts.
+  session_version?: number;
+  // SHA-256 digest of the one-time recovery token that last succeeded. The
+  // raw recovery token never enters durable storage.
+  last_reset_token_hash?: string;
+  created_at: number;
+  updated_at: number;
+  last_login_at?: number;
+};
+
 type StoreOrder = {
   id: number;
   buyer_code: string;
@@ -67,6 +109,8 @@ type Store = {
   nextOrderId: number;
   requests: StoreRequest[];
   buyers: StoreBuyer[];
+  portal_accounts: PortalAccount[];
+  owner_account: OwnerAccount | null;
   orders: StoreOrder[];
 };
 
@@ -93,6 +137,8 @@ function emptyStore(): Store {
     nextOrderId: 1,
     requests: [],
     buyers: [],
+    portal_accounts: [],
+    owner_account: null,
     orders: [],
   };
 }
@@ -135,6 +181,10 @@ async function readStoreWithSha(): Promise<{ store: Store; sha?: string }> {
       ...parsed,
       requests: Array.isArray(parsed.requests) ? parsed.requests as StoreRequest[] : [],
       buyers: Array.isArray(parsed.buyers) ? parsed.buyers as StoreBuyer[] : [],
+      portal_accounts: Array.isArray(parsed.portal_accounts) ? parsed.portal_accounts as PortalAccount[] : [],
+      owner_account: parsed.owner_account && typeof parsed.owner_account === 'object'
+        ? parsed.owner_account as OwnerAccount
+        : null,
       orders: Array.isArray(parsed.orders) ? parsed.orders as StoreOrder[] : [],
     },
   };
@@ -258,6 +308,162 @@ export async function updateBuyerInStore(username: string, updater: (buyer: Stor
     updater(buyer);
     buyer.updated_at = Date.now();
     return buyer;
+  });
+}
+
+function normalizedEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export async function findOwnerAccountInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  const { store } = await readStoreWithSha();
+  const owner = store.owner_account;
+  if (!owner || owner.status !== 'active' || normalizedEmail(owner.email) !== wanted) return null;
+  return owner;
+}
+
+/**
+ * Creates the one durable owner credential. This is deliberately create-only:
+ * the short-lived setup link cannot be replayed to replace a password later.
+ */
+export async function createOwnerAccountInStore(input: {
+  email: string;
+  password_hash: string;
+  last_reset_token_hash?: string;
+}) {
+  const now = Date.now();
+  const email = normalizedEmail(input.email);
+  return mutateStore('Create UplineAgent owner credential', (store) => {
+    if (store.owner_account) throw new Error('OWNER_ACCOUNT_EXISTS');
+    if (store.buyers.some((buyer) => normalizedEmail(buyer.username) === email) || store.portal_accounts.some((account) => normalizedEmail(account.email) === email)) {
+      throw new Error('OWNER_EMAIL_IN_USE');
+    }
+    const owner: OwnerAccount = {
+      email,
+      password_hash: input.password_hash,
+      status: 'active',
+      session_version: 1,
+      ...(input.last_reset_token_hash ? { last_reset_token_hash: input.last_reset_token_hash } : {}),
+      created_at: now,
+      updated_at: now,
+    };
+    store.owner_account = owner;
+    return owner;
+  });
+}
+
+export async function markOwnerAccountLoginInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  return mutateStore('Update UplineAgent owner last login', (store) => {
+    const owner = store.owner_account;
+    if (!owner || normalizedEmail(owner.email) !== wanted || owner.status !== 'active') return null;
+    owner.last_login_at = Date.now();
+    owner.updated_at = Date.now();
+    return owner;
+  });
+}
+
+export async function getOwnerSessionVersionInStore(email: string) {
+  const owner = await findOwnerAccountInStore(email);
+  if (!owner) return null;
+  const version = Number(owner.session_version || 1);
+  return Number.isSafeInteger(version) && version > 0 ? version : 1;
+}
+
+/**
+ * Replaces the durable owner password after a separately validated, one-time
+ * recovery token is presented. Keeping the token digest lets us reject a
+ * replay even while the short expiry window is still open.
+ */
+export async function resetOwnerPasswordInStore(input: {
+  email: string;
+  password_hash: string;
+  reset_token_hash: string;
+}) {
+  const email = normalizedEmail(input.email);
+  return mutateStore('Reset UplineAgent owner credential', (store) => {
+    const owner = store.owner_account;
+    if (!owner || owner.status !== 'active' || normalizedEmail(owner.email) !== email) {
+      throw new Error('OWNER_ACCOUNT_NOT_FOUND');
+    }
+    if (!input.reset_token_hash || owner.last_reset_token_hash === input.reset_token_hash) {
+      throw new Error('OWNER_RESET_ALREADY_USED');
+    }
+
+    const currentVersion = Number(owner.session_version || 1);
+    owner.password_hash = input.password_hash;
+    owner.session_version = Number.isSafeInteger(currentVersion) && currentVersion > 0 ? currentVersion + 1 : 2;
+    owner.last_reset_token_hash = input.reset_token_hash;
+    owner.updated_at = Date.now();
+    return owner;
+  });
+}
+
+export async function createPortalAccountInStore(input: {
+  email: string;
+  full_name?: string;
+  password_hash: string;
+}) {
+  const now = Date.now();
+  const email = normalizedEmail(input.email);
+
+  return mutateStore('Create restricted Upline Agent portal account', (store) => {
+    const alreadyBuyer = store.buyers.some((buyer) => normalizedEmail(buyer.username) === email);
+    const alreadyPortal = store.portal_accounts.some((account) => normalizedEmail(account.email) === email);
+    if (alreadyBuyer || alreadyPortal) throw new Error('ACCOUNT_EXISTS');
+
+    const account: PortalAccount = {
+      id: `portal_${crypto.randomUUID()}`,
+      email,
+      full_name: String(input.full_name || '').trim(),
+      password_hash: input.password_hash,
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+    };
+    store.portal_accounts.push(account);
+    return account;
+  });
+}
+
+export async function findPortalAccountInStore(email: string) {
+  const wanted = normalizedEmail(email);
+  const { store } = await readStoreWithSha();
+  return store.portal_accounts.find((account) => normalizedEmail(account.email) === wanted) || null;
+}
+
+export async function getPortalAccountByIdInStore(id: string) {
+  const { store } = await readStoreWithSha();
+  return store.portal_accounts.find((account) => account.id === id) || null;
+}
+
+export async function markPortalAccountLoginInStore(id: string) {
+  return mutateStore('Update restricted portal last login', (store) => {
+    const account = store.portal_accounts.find((row) => row.id === id);
+    if (!account) return null;
+    account.last_login_at = Date.now();
+    account.updated_at = Date.now();
+    return account;
+  });
+}
+
+export async function updatePortalAccountProfileInStore(
+  id: string,
+  profile: Pick<PortalAccount, 'full_name' | 'phone' | 'npn' | 'residence_state' | 'license_state' | 'agency_name' | 'sales_model'>
+) {
+  return mutateStore('Update restricted portal profile', (store) => {
+    const account = store.portal_accounts.find((row) => row.id === id);
+    if (!account || account.status !== 'active') throw new Error('PORTAL_ACCOUNT_NOT_FOUND');
+    account.full_name = profile.full_name;
+    account.phone = profile.phone;
+    account.npn = profile.npn;
+    account.residence_state = profile.residence_state;
+    account.license_state = profile.license_state;
+    account.agency_name = profile.agency_name;
+    account.sales_model = profile.sales_model;
+    account.updated_at = Date.now();
+    return account;
   });
 }
 

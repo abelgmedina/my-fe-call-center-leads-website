@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,9 @@ function okEnv(name: string) {
   return !!process.env[name];
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'internal');
+  if (denied) return denied;
   const checks: Array<{ name: string; ok: boolean; detail?: any; ms?: number }> = [];
 
   // 1) Env sanity (presence only; no secrets)

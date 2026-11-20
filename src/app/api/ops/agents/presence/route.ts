@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireInternalAgent } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,11 @@ function ensure() {
 }
 
 export async function GET(req: Request) {
+  try {
+    await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   ensure();
   const { searchParams } = new URL(req.url);
   const agentId = String(searchParams.get('agent') || '').trim();
@@ -32,10 +38,19 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let agent;
+  try {
+    agent = await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   ensure();
   const body = (await req.json().catch(() => null)) as any;
-  const agentId = String(body?.agent || body?.agent_id || '').trim();
-  if (!agentId) return NextResponse.json({ error: 'agent required' }, { status: 400 });
+  const requestedAgentId = String(body?.agent || body?.agent_id || '').trim();
+  if (requestedAgentId && requestedAgentId !== agent.id) {
+    return NextResponse.json({ error: 'cannot update another agent presence' }, { status: 403 });
+  }
+  const agentId = agent.id;
 
   const visible = body?.visible ? 1 : 0;
   const deviceReady = body?.device_ready ? 1 : 0;

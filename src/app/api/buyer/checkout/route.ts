@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAgent } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { leadProductMap } from '@/lib/lead-products';
-import { appendLeadOrderToStore, getBuyerOnboardingFromStore, isGitHubStoreConfigured } from '@/lib/github-store';
+import { appendLeadOrderToStore, isGitHubStoreConfigured } from '@/lib/github-store';
 
 export const runtime = 'nodejs';
 
@@ -48,18 +48,11 @@ async function createStripeCheckout(params: {
 }
 
 export async function POST(req: Request) {
-  const me: any = await requireAgent();
+  const me = await requireAgent();
   if ((me.role || 'internal') !== 'buyer' || !me.buyer_code) {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
   }
-  if (isGitHubStoreConfigured()) {
-    const onboarding = await getBuyerOnboardingFromStore(me.username);
-    if (!onboarding?.complete) {
-      return NextResponse.json({ ok: false, error: 'onboarding required' }, { status: 403 });
-    }
-  }
-
-  const body = (await req.json().catch(() => null)) as any;
+  const body = (await req.json().catch(() => null)) as { product_id?: unknown } | null;
   const id = String(body?.product_id || '').trim();
   const product = leadProductMap[id];
   if (!product) return NextResponse.json({ ok: false, error: 'invalid product' }, { status: 400 });

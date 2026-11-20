@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireInternalAgent } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  try {
+    await requireInternalAgent();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
   const { searchParams } = new URL(req.url);
   const callSid = searchParams.get('callSid') || '';
   if (!callSid) return NextResponse.json({ error: 'callSid required' }, { status: 400 });

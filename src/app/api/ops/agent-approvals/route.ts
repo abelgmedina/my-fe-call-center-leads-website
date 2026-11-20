@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAgent } from '@/lib/auth';
+import { requireOwner } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/passwords';
 import { updateAgentAccessRequestDecisionInSheet } from '@/lib/agent-access-sheets';
@@ -17,19 +17,15 @@ function buyerCodeFrom(input: string) {
   return base ? `buyer_${base}` : `buyer_${Date.now()}`;
 }
 
-function assertOps(me: any) {
-  if (me.id !== 'abel') throw new Error('FORBIDDEN');
-}
-
 function getJsonErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
   return String(error);
 }
 
 export async function GET() {
-  const me = await requireAgent();
+  let me;
   try {
-    assertOps(me);
+    me = await requireOwner();
   } catch {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
   }
@@ -53,9 +49,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const me = await requireAgent();
+  let me;
   try {
-    assertOps(me);
+    me = await requireOwner();
   } catch {
     return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 });
   }

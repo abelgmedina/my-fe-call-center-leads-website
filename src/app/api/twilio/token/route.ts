@@ -4,12 +4,12 @@ import { requireEnv } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
-import { requireAgent } from '@/lib/auth';
+import { requireInternalAgent } from '@/lib/auth';
 
 export async function GET() {
   let identity = '';
   try {
-    const agent = await requireAgent();
+    const agent = await requireInternalAgent();
     identity = `agent_${agent.id}`;
   } catch {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });

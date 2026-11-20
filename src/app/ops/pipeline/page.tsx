@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
+import { currentRequestAuthHeaders } from '@/lib/request-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ async function baseUrl() {
 
 async function getKanban() {
   const url = `${await baseUrl()}/api/ops/kanban`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
   if (!res.ok) throw new Error(`Failed to load kanban: ${res.status}`);
   return res.json();
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { gogJson } from '@/lib/gog';
 import { db } from '@/lib/db';
 import { renderTemplate, sendOutboundSms } from '@/lib/sms';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,8 @@ function firstName(full: string) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireOpsAccess(req, 'owner');
+  if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const dryRun = searchParams.get('dryRun') !== '0';
 

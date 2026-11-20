@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireOpsAccess } from '@/lib/ops-access';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,8 @@ function ensure() {
 }
 
 export async function GET(req: Request) {
+  const denied = await requireOpsAccess(req, 'internal');
+  if (denied) return denied;
   ensure();
   const { searchParams } = new URL(req.url);
   const callSid = String(searchParams.get('callSid') || '').trim();

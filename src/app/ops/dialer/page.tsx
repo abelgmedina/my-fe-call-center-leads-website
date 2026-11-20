@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { DialerPanel } from './panel';
+import { currentRequestAuthHeaders } from '@/lib/request-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ async function baseUrl() {
 
 async function getQueue() {
   const url = `${await baseUrl()}/api/ops/call/queue`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
   if (!res.ok) throw new Error(`Failed to load call queue: ${res.status}`);
   return res.json();
 }

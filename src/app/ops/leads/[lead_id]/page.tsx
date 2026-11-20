@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { headers } from 'next/headers';
 import { LeadEditor } from './LeadEditor';
+import { currentRequestAuthHeaders } from '@/lib/request-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ async function baseUrl() {
 
 async function getLead(lead_id: string) {
   const url = `${await baseUrl()}/api/ops/lead?lead_id=${encodeURIComponent(lead_id)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
   if (!res.ok) throw new Error(`Failed to load lead: ${res.status}`);
   return res.json();
 }
