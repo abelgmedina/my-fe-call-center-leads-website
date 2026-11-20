@@ -1,22 +1,19 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { exec } from 'node:child_process';
+import { parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  // Twilio sends application/x-www-form-urlencoded
-  let form: FormData | null = null;
-  try {
-    form = await req.formData();
-  } catch {
-    form = null;
-  }
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
 
-  const callSid = String(form?.get('CallSid') ?? '').trim();
-  const recordingSid = String(form?.get('RecordingSid') ?? '').trim();
-  const recordingStatus = String(form?.get('RecordingStatus') ?? '').trim();
-  const recordingUrl = String(form?.get('RecordingUrl') ?? '').trim();
+  const form = verified.form;
+
+  const callSid = String(form.get('CallSid') ?? '').trim();
+  const recordingSid = String(form.get('RecordingSid') ?? '').trim();
+  const recordingStatus = String(form.get('RecordingStatus') ?? '').trim();
+  const recordingUrl = String(form.get('RecordingUrl') ?? '').trim();
 
   if (callSid) {
     // Best-effort: attach recording info to call_events row (if present)
@@ -50,14 +47,13 @@ export async function POST(req: Request) {
     } catch {}
   }
 
-  // Kick off post-call coaching when recording completes (best-effort, non-blocking).
-  if (callSid && recordingUrl && recordingStatus && recordingStatus.toLowerCase() === 'completed') {
-    try {
-      const base = process.env.INTERNAL_BASE_URL || 'http://127.0.0.1:3001';
-      const cmd = `bash scripts/coach_from_recording.sh ${callSid} ${recordingUrl} ${base}`;
-      exec(cmd, { cwd: process.cwd(), env: process.env }, () => {});
-    } catch {}
-  }
+  // A serverless route cannot safely run the former local coaching shell
+  // script. Keep the authenticated recording metadata, but make the worker
+  // gap explicit until a hosted queue/worker is configured.
+  const coachingStatus =
+    callSid && recordingUrl && recordingStatus.toLowerCase() === 'completed'
+      ? 'HOSTED_WORKER_NOT_CONFIGURED'
+      : 'NOT_READY';
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, coachingStatus });
 }

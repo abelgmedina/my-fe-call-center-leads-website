@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { gogJson } from '@/lib/gog';
 import { tzForState, localParts, nextBucketIso } from '@/lib/timezones';
+import { parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +29,10 @@ function colLetter(n0: number) {
 // Twilio calls status callback (POST form-encoded)
 // https://www.twilio.com/docs/voice/api/call-resource#statuscallback
 export async function POST(req: Request) {
-  const form = await req.formData();
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
+  const form = verified.form;
   const callSid = String(form.get('CallSid') ?? '');
   const callStatus = String(form.get('CallStatus') ?? '');
   const callDuration = Number(String(form.get('CallDuration') ?? '0'));

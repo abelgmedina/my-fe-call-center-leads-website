@@ -4,7 +4,7 @@ import { db, getAgentStatus } from '@/lib/db';
 import { createTakeToken, sendWaitingSmsAlert } from '@/lib/alerts';
 import { gogJson } from '@/lib/gog';
 import { tzForState, localParts } from '@/lib/timezones';
-import { publicBaseUrl } from '@/lib/twilio';
+import { parseVerifiedTwilioWebhook, publicBaseUrl } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -180,11 +180,14 @@ async function updateLeadByPhone(params: { phone: string; summary: string; nextA
 }
 
 export async function POST(req: Request) {
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
   const { searchParams } = new URL(req.url);
   const step = String(searchParams.get('step') ?? 'welcome');
   const lang = (String(searchParams.get('lang') ?? 'en').toLowerCase() === 'es' ? 'es' : 'en') as 'en' | 'es';
 
-  const form = await req.formData();
+  const form = verified.form;
   const from = String(form.get('From') ?? searchParams.get('from') ?? '');
   const callSid = String(form.get('CallSid') ?? searchParams.get('callSid') ?? '');
 

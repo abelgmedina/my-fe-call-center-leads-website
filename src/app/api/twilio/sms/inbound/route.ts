@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { db } from '@/lib/db';
-import { requireEnv, publicBaseUrl, getTwilioClient } from '@/lib/twilio';
+import { requireEnv, publicBaseUrl, getTwilioClient, parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +29,10 @@ function classify(bodyRaw: string) {
 }
 
 export async function POST(req: Request) {
-  const form = await req.formData();
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
+  const form = verified.form;
   const from = String(form.get('From') ?? '');
   const to = String(form.get('To') ?? '');
   const body = String(form.get('Body') ?? '');
