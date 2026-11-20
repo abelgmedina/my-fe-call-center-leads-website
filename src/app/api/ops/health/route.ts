@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function okEnv(name: string) {
   // Outgoing calls are optional; keep health green for inbound even if TWIML app SID is not set.
@@ -13,7 +14,7 @@ function okEnv(name: string) {
   return !!process.env[name];
 }
 
-export async function GET(req: Request) {
+async function getOpsHealth(req: Request) {
   const denied = await requireOpsAccess(req, 'internal');
   if (denied) return denied;
   const checks: Array<{ name: string; ok: boolean; detail?: any; ms?: number }> = [];
@@ -29,6 +30,9 @@ export async function GET(req: Request) {
     'PUBLIC_BASE_URL',
     'AUTH_SECRET',
     'AGENTS_CONFIG_JSON',
+    'GOOGLE_SERVICE_ACCOUNT_EMAIL',
+    'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY',
+    'UPLINE_SHEETS_SPREADSHEET_ID',
   ];
   for (const n of envNames) {
     checks.push({ name: `env:${n}`, ok: okEnv(n) });
@@ -37,7 +41,7 @@ export async function GET(req: Request) {
   // 2) Google Sheets read check (headers row)
   const t0 = Date.now();
   try {
-    const headerResp = await gogJson(
+    const headerResp = await sheetsJson(
       ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
       { account: ACCOUNT }
     );
@@ -58,7 +62,7 @@ export async function GET(req: Request) {
     checks.push({
       name: 'sheets:abel_active_headers',
       ok: false,
-      detail: { error: e?.message || String(e) },
+      detail: { error: 'unavailable' },
       ms: Date.now() - t0,
     });
   }
@@ -83,3 +87,5 @@ export async function GET(req: Request) {
     { status: overallOk ? 200 : 503 }
   );
 }
+
+export const GET = withApiErrorHandling('/api/ops/health', getOpsHealth);

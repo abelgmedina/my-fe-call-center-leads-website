@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -31,7 +32,7 @@ function colLetter(n0: number) {
  *
  * Body: { lead_id, from_number?, to_number?, callSid?, qualification_summary }
  */
-export async function POST(req: Request) {
+async function transferAiLead(req: Request) {
   const denied = await requireOpsAccess(req, 'owner');
   if (denied) return denied;
   const body = (await req.json().catch(() => null)) as any;
@@ -54,12 +55,12 @@ export async function POST(req: Request) {
   } catch {}
 
   // 2) Update Google Sheet lead fields
-  const headerResp = await gogJson(
+  const headerResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
     { account: ACCOUNT }
   );
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-  const dataResp = await gogJson(
+  const dataResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'],
     { account: ACCOUNT }
   );
@@ -97,10 +98,12 @@ export async function POST(req: Request) {
   }
 
   const range = `MASTER_LEADS!${colLetter(minCol)}${rowIndex}:${colLetter(maxCol)}${rowIndex}`;
-  await gogJson(
+  await sheetsJson(
     ['sheets', 'update', ABEL_ACTIVE_SHEET_ID, range, '--values-json', JSON.stringify([values]), '--input', 'USER_ENTERED'],
     { account: ACCOUNT }
   );
 
   return NextResponse.json({ ok: true, lead_id, rowIndex, status: 'QUALIFIED_TRANSFER_NOW' });
 }
+
+export const POST = withApiErrorHandling('/api/ops/ai/transfer', transferAiLead);

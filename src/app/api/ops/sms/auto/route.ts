@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { db } from '@/lib/db';
 import { renderTemplate, sendOutboundSms } from '@/lib/sms';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -54,20 +55,20 @@ function firstName(full: string) {
   return n.split(/\s+/)[0] || '';
 }
 
-export async function POST(req: Request) {
+async function sendAutomatedSms(req: Request) {
   const denied = await requireOpsAccess(req, 'owner');
   if (denied) return denied;
   const { searchParams } = new URL(req.url);
   const dryRun = searchParams.get('dryRun') !== '0';
 
   // Load sheet
-  const headerResp = await gogJson(
+  const headerResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'],
     { account: ACCOUNT }
   );
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
 
-  const dataResp = await gogJson(
+  const dataResp = await sheetsJson(
     ['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'],
     { account: ACCOUNT }
   );
@@ -153,3 +154,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, dryRun, considered, sent, results, updatedAt: new Date().toISOString() });
 }
+
+export const POST = withApiErrorHandling('/api/ops/sms/auto', sendAutomatedSms);
