@@ -50,6 +50,18 @@ type LocalBuyerRow = {
 const COOKIE = 'oc_agent';
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
+/**
+ * The owner credential lives in the durable store. Do not collapse a store
+ * outage into a bad-password result: it prevents the owner from knowing
+ * whether retrying the same credential is appropriate.
+ */
+export class AuthDependencyUnavailableError extends Error {
+  constructor() {
+    super('AUTH_DEPENDENCY_UNAVAILABLE');
+    this.name = 'AuthDependencyUnavailableError';
+  }
+}
+
 type SessionPayload =
   | { kind: 'env'; agentId: string; ownerSessionVersion?: number; iat: number; exp: number }
   | { kind: 'buyer'; username: string; buyer_code: string; buyer_role: 'buyer_admin' | 'buyer_agent'; iat: number; exp: number }
@@ -355,6 +367,11 @@ async function verifyConfiguredOwnerLogin(login: string, password: string) {
       return ownerAgent;
     }
 
+    // Vercel filesystem state is ephemeral. A configured production owner
+    // login without the durable store is a dependency failure, not an
+    // ordinary invalid-password result.
+    if (process.env.VERCEL) throw new AuthDependencyUnavailableError();
+
     const { db } = await import('@/lib/db');
     const account = db
       .prepare('select email, password_hash, status from owner_accounts where lower(email) = lower(?)')
@@ -364,9 +381,11 @@ async function verifyConfiguredOwnerLogin(login: string, password: string) {
       db.prepare('update owner_accounts set last_login_at = ?, updated_at = ? where email = ?').run(Date.now(), Date.now(), account.email);
     } catch {}
     return ownerAgent;
-  } catch {
-    // Auth-storage failures must fail closed and look like an ordinary invalid login.
-    return null;
+  } catch (error) {
+    if (error instanceof AuthDependencyUnavailableError) throw error;
+    // Do not reveal provider details, but let the route distinguish a
+    // temporary storage failure from a rejected credential.
+    throw new AuthDependencyUnavailableError();
   }
 }
 
