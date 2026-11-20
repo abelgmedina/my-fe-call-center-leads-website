@@ -83,5 +83,15 @@
       "agreement_ip": "96.78.148.89"
     }
   ],
+  "portal_accounts": [],
+  "owner_account": {
+    "email": "abel@inhousemedia.io",
+    "password_hash": "scrypt$16384$8$1$l9J8gADAp694jLdgjoDaYA==$BXeHVRRRrQpsp4iv7LnlA7hqb5+jW57L0ZbeFHbTY3Y=",
+    "status": "active",
+    "session_version": 1,
+    "last_reset_token_hash": "1fe85f4fdabc941868e55d7244863b69343ad3783f917121f5425dc6606bea86",
+    "created_at": 1795152386043,
+    "updated_at": 1795152386043
+  },
   "orders": []
 }
