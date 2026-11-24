@@ -37,8 +37,8 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   return <section className={`rounded-lg border border-white/[0.09] bg-[#11141b] ${className}`}>{children}</section>;
 }
 
-function Kicker({ children, tone = 'red' }: { children: React.ReactNode; tone?: 'red' | 'slate' | 'green' | 'amber' }) {
-  const colors = { red: 'text-red-300', slate: 'text-slate-500', green: 'text-emerald-300', amber: 'text-amber-300' };
+function Kicker({ children, tone = 'red' }: { children: React.ReactNode; tone?: 'red' | 'slate' | 'green' | 'amber' | 'blue' }) {
+  const colors = { red: 'text-red-300', slate: 'text-slate-500', green: 'text-emerald-300', amber: 'text-amber-300', blue: 'text-sky-300' };
   return <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${colors[tone]}`}>{children}</p>;
 }
 
@@ -138,7 +138,7 @@ function HomeView({ workspace, setWorkspace, displayName }: CommandViewProps) {
     </section>
 
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-      {kpis.map(([label, value, tone]) => <Card key={label} className="p-4"><Kicker tone={tone as 'red' | 'slate' | 'green' | 'amber'}>{label}</Kicker><p className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</p><p className="mt-1 text-[11px] text-slate-500">Preview calculation</p></Card>)}
+      {kpis.map(([label, value, tone]) => <Card key={label} className="p-4"><Kicker tone={tone}>{label}</Kicker><p className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</p><p className="mt-1 text-[11px] text-slate-500">Preview calculation</p></Card>)}
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[1.5fr_0.9fr]">
