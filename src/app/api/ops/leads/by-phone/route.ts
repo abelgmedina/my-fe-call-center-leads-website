@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-// FB Lead Form sheet (Zapier writes here)
-const FB_LEADS_SHEET_ID = '1VyR9uIaPPJjxXQqUle8RQZNWYdKn6G4_SN4fIrlMFKU';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+// External lead sync target; configured only in the hosting secret store.
+const FB_LEADS_SHEET_ID = process.env.UPLINE_FB_LEADS_SHEET_ID?.trim() || '';
 
 function normPhone(v: string) {
   const digits = String(v || '').replace(/\D+/g, '');
@@ -24,7 +25,7 @@ function idx(headers: string[], name: string) {
   return -1;
 }
 
-export async function GET(req: Request) {
+async function findLeadByPhone(req: Request) {
   const denied = await requireOpsAccess(req, 'internal');
   if (denied) return denied;
   const { searchParams } = new URL(req.url);
@@ -35,11 +36,11 @@ export async function GET(req: Request) {
   if (!needle) return NextResponse.json({ error: 'invalid phone' }, { status: 400 });
 
   // We intentionally use ranges without an explicit sheet tab name to target the first sheet.
-  const headerResp = await gogJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A1:AZ1'], { account: ACCOUNT });
+  const headerResp = await sheetsJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A1:AZ1'], { account: ACCOUNT });
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
   if (!headers.length) return NextResponse.json({ error: 'missing headers' }, { status: 500 });
 
-  const dataResp = await gogJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A2:AZ5000'], { account: ACCOUNT });
+  const dataResp = await sheetsJson(['sheets', 'get', FB_LEADS_SHEET_ID, 'A2:AZ5000'], { account: ACCOUNT });
   const rows: string[][] = (dataResp.values ?? []) as string[][];
 
   // Try a few common phone column names.
@@ -83,3 +84,5 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ ok: true, matched: false, phone: phone, phone_norm: needle, updatedAt: new Date().toISOString() });
 }
+
+export const GET = withApiErrorHandling('/api/ops/leads/by-phone', findLeadByPhone);

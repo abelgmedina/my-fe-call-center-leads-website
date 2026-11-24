@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { getAgentStatus } from '@/lib/db';
-import { publicBaseUrl } from '@/lib/twilio';
+import { parseVerifiedTwilioWebhook, publicBaseUrl } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +16,9 @@ function t(lang: 'en' | 'es', en: string, es: string) {
 }
 
 export async function POST(req: Request) {
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
   const { searchParams } = new URL(req.url);
   const lang = (String(searchParams.get('lang') ?? 'en').toLowerCase() === 'es' ? 'es' : 'en') as 'en' | 'es';
   const from = String(searchParams.get('from') ?? '').trim();

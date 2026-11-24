@@ -27,10 +27,12 @@ export function DialerPanel({
   grouped,
   otherCallablePreview,
   queueCount,
+  disabled = false,
 }: {
   grouped: Record<string, Card[]>;
   otherCallablePreview: Card[];
   queueCount: number;
+  disabled?: boolean;
 }) {
   const [running, setRunning] = useState(false);
   const [msg, setMsg] = useState<string>('');
@@ -48,6 +50,10 @@ export function DialerPanel({
   const next = useMemo(() => pickNext(grouped, otherCallablePreview), [grouped, otherCallablePreview]);
 
   async function startPack() {
+    if (disabled) {
+      setMsg('Dialer blocked: the hosted queue data service is unavailable.');
+      return;
+    }
     if (!next) {
       setMsg('No callable leads in queue.');
       return;
@@ -235,6 +241,10 @@ async function tick() {
   }
 
   function start() {
+    if (disabled) {
+      setMsg('Dialer blocked: the hosted queue data service is unavailable.');
+      return;
+    }
     if (running) return;
     setRunning(true);
     setMsg('Dialer started.');
@@ -264,7 +274,7 @@ async function tick() {
               className="rounded-md border border-neutral-800 bg-neutral-950/40 px-2 py-2 text-xs font-semibold text-neutral-200"
               value={parallelLines}
               onChange={(e) => setParallelLines(Number(e.target.value))}
-              disabled={running}
+              disabled={running || disabled}
             >
               <option value={1}>1 line</option>
               <option value={2}>2 lines</option>
@@ -273,7 +283,7 @@ async function tick() {
             <button
               className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50"
               onClick={start}
-              disabled={running}
+              disabled={running || disabled}
             >
               Start Dialing
             </button>
@@ -328,7 +338,7 @@ async function tick() {
               ))
             ) : (
               <div className="rounded-xl border border-neutral-900 bg-neutral-950/40 p-4 text-sm text-neutral-500">
-                No active attempts. Click <span className="font-semibold text-neutral-200">Start Dialing</span> to begin.
+                {disabled ? 'Dialer is blocked until hosted queue data is configured.' : <>No active attempts. Click <span className="font-semibold text-neutral-200">Start Dialing</span> to begin.</>}
               </div>
             )}
           </div>

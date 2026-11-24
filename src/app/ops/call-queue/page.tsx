@@ -2,23 +2,25 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { DialNextButton } from './DialNextButton';
 import { currentRequestAuthHeaders } from '@/lib/request-auth';
+import { safeFetchJson } from '@/lib/safe-fetch';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function baseUrl() {
+type CallQueue = { columns: string[]; grouped: Record<string, any[]>; updatedAt: string };
+
+async function baseUrl(): Promise<string | null> {
   const h: any = await (headers() as any);
   const host = h?.get?.('host') ?? h?.host;
   const proto = (h?.get?.('x-forwarded-proto') ?? h?.['x-forwarded-proto']) || 'http';
-  if (!host) throw new Error('Missing host header');
+  if (!host) return null;
   return `${proto}://${host}`;
 }
 
 async function getQueue() {
-  const url = `${await baseUrl()}/api/ops/call/queue`;
-  const res = await fetch(url, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
-  if (!res.ok) throw new Error(`Failed to load call queue: ${res.status}`);
-  return res.json();
+  const base = await baseUrl();
+  if (!base) return { ok: false as const, message: 'The request host could not be determined.' };
+  return safeFetchJson<CallQueue>(`${base}/api/ops/call/queue`, { cache: 'no-store', headers: await currentRequestAuthHeaders() });
 }
 
 function Card({ c }: { c: any }) {
@@ -37,9 +39,11 @@ function Card({ c }: { c: any }) {
 }
 
 export default async function CallQueuePage() {
-  const data = await getQueue();
-  const columns: string[] = data.columns;
-  const grouped: Record<string, any[]> = data.grouped;
+  const result = await getQueue();
+  const data = result.ok ? result.data : null;
+  const failureMessage = result.ok ? '' : result.message;
+  const columns: string[] = data?.columns || [];
+  const grouped: Record<string, any[]> = data?.grouped || {};
 
   const pickNext = () => {
     const buckets = ['QUALIFIED_TRANSFER_NOW', 'READY_FOR_CALL', 'NO_ANSWER', 'CALL_APPT_SET'];
@@ -63,7 +67,9 @@ export default async function CallQueuePage() {
         <div>
           <h1 className="text-2xl font-semibold">Call Queue (Abel Active)</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Click a lead → use “Call lead (queue)” on the lead page. Updated {new Date(data.updatedAt).toLocaleString()}.
+            {data
+              ? `Click a lead → use “Call lead (queue)” on the lead page. Updated ${new Date(data.updatedAt).toLocaleString()}.`
+              : 'Queue data is currently unavailable.'}
           </p>
           <div className="mt-3">
             <DialNextButton leadId={nextLeadId} />
@@ -76,7 +82,15 @@ export default async function CallQueuePage() {
         </div>
       </div>
 
-      <div
+      {!data ? (
+        <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="font-semibold">Call queue is unavailable</div>
+          <p className="mt-1 text-amber-100/80">{failureMessage}</p>
+          <p className="mt-1 text-xs text-amber-100/70">Dialing remains blocked until the hosted data adapter is configured.</p>
+        </div>
+      ) : null}
+
+      {data ? <div
         className="mt-6 grid gap-4 overflow-x-auto"
         style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(260px, 1fr))` }}
       >
@@ -94,7 +108,7 @@ export default async function CallQueuePage() {
             </div>
           </section>
         ))}
-      </div>
+      </div> : null}
     </main>
   );
 }

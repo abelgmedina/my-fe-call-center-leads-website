@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 import { db, getAgentStatus } from '@/lib/db';
 import { getTwilioClient } from '@/lib/twilio';
 import { tzForState, localParts, bucketForHour } from '@/lib/timezones';
 import { requireOpsAccess } from '@/lib/ops-access';
+import { withApiErrorHandling } from '@/lib/api-errors';
 
 export const runtime = 'nodejs';
 
-const ACCOUNT = 'openclaw@uplineagent.com';
-const ABEL_ACTIVE_SHEET_ID = '1473l2syLNz5ipDyo7olvetRdNsKdtPiC_nB9nLzEbbI';
+const ACCOUNT = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
+const ABEL_ACTIVE_SHEET_ID = process.env.UPLINE_SHEETS_SPREADSHEET_ID?.trim() || '';
 
 function idx(headers: string[], name: string) {
   const i = headers.indexOf(name);
@@ -59,7 +60,7 @@ function isTestLead(leadId: string, phone: string) {
  * Query params:
  * - limit (default 1, max 5)
  */
-export async function POST(req: Request) {
+async function runCallbacks(req: Request) {
   const denied = await requireOpsAccess(req, 'owner');
   if (denied) return denied;
   const { searchParams } = new URL(req.url);
@@ -70,9 +71,9 @@ export async function POST(req: Request) {
   const availableAgent = anyAgentAvailable(agentIds);
   if (!availableAgent) return NextResponse.json({ ok: true, didDial: false, reason: 'no agents available' });
 
-  const headerResp = await gogJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'], { account: ACCOUNT });
+  const headerResp = await sheetsJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A1:AO1'], { account: ACCOUNT });
   const headers: string[] = (headerResp.values?.[0] ?? []) as string[];
-  const dataResp = await gogJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'], { account: ACCOUNT });
+  const dataResp = await sheetsJson(['sheets', 'get', ABEL_ACTIVE_SHEET_ID, 'MASTER_LEADS!A2:AO5000'], { account: ACCOUNT });
   const rows: string[][] = (dataResp.values ?? []) as string[][];
 
   const iLeadId = idx(headers, 'lead_id');
@@ -160,7 +161,7 @@ export async function POST(req: Request) {
         const lockUntilIso = new Date(Date.now() + 20 * 60 * 1000).toISOString();
         const nextCol = colLetter(iNext);
         const nextRange = `MASTER_LEADS!${nextCol}${item.rowIndex}:${nextCol}${item.rowIndex}`;
-        await gogJson(
+        await sheetsJson(
           ['sheets', 'update', ABEL_ACTIVE_SHEET_ID, nextRange, '--values-json', JSON.stringify([[lockUntilIso]]), '--input', 'USER_ENTERED'],
           { account: ACCOUNT }
         );
@@ -180,3 +181,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, didDial: dialed.length > 0, count: dialed.length, dialed });
 }
+
+export const POST = withApiErrorHandling('/api/ops/callbacks/run', runCallbacks);

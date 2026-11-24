@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
-import { publicBaseUrl, requireEnv } from '@/lib/twilio';
+import { parseVerifiedTwilioWebhook, publicBaseUrl, requireEnv } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +13,10 @@ function xml(res: twilio.twiml.VoiceResponse) {
 // TwiML for browser-initiated outbound calls (manual dial pad).
 // Twilio Voice SDK sends params: To
 export async function POST(req: Request) {
-  const form = await req.formData();
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
+  const form = verified.form;
   const toRaw = String(form.get('To') ?? '').trim();
 
   const vr = new twilio.twiml.VoiceResponse();

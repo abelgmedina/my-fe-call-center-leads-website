@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
+import { parseVerifiedTwilioWebhook } from '@/lib/twilio';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +15,10 @@ function xml(res: twilio.twiml.VoiceResponse) {
  * We enqueue them so the agent can take from the /agent UI (take token dequeues oldest).
  */
 export async function POST(req: Request) {
-  const form = await req.formData();
+  const verified = await parseVerifiedTwilioWebhook(req);
+  if (!verified.ok) return verified.response;
+
+  const form = verified.form;
   const to = String(form.get('To') ?? '');
 
   const vr = new twilio.twiml.VoiceResponse();

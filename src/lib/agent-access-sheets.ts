@@ -1,6 +1,5 @@
-import { gogJson } from '@/lib/gog';
+import { sheetsJson } from '@/lib/hosted-sheets';
 
-const DEFAULT_ACCOUNT = 'openclaw@uplineagent.com';
 const DEFAULT_RANGE = 'Sheet1!A:N';
 
 export type AgentAccessSheetRow = {
@@ -38,8 +37,7 @@ export async function appendAgentAccessRequestToSheet(row: AgentAccessSheetRow) 
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Agent access sheet webhook failed: HTTP ${res.status}${body ? ` ${body.slice(0, 500)}` : ''}`);
+      throw new Error(`Agent access sheet webhook failed: HTTP ${res.status}`);
     }
     return;
   }
@@ -64,7 +62,7 @@ export async function appendAgentAccessRequestToSheet(row: AgentAccessSheetRow) 
     row.buyerCode || '',
   ]];
 
-  await gogJson(
+  await sheetsJson(
     [
       'sheets',
       'append',
@@ -77,7 +75,7 @@ export async function appendAgentAccessRequestToSheet(row: AgentAccessSheetRow) 
       '--insert',
       'INSERT_ROWS',
     ],
-    { account: process.env.GOG_ACCOUNT?.trim() || DEFAULT_ACCOUNT }
+    { account: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '' }
   );
 }
 
@@ -91,8 +89,7 @@ export async function updateAgentAccessRequestDecisionInSheet(update: AgentAcces
     });
 
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Agent access sheet decision webhook failed: HTTP ${res.status}${body ? ` ${body.slice(0, 500)}` : ''}`);
+      throw new Error(`Agent access sheet decision webhook failed: HTTP ${res.status}`);
     }
     return;
   }
@@ -100,9 +97,9 @@ export async function updateAgentAccessRequestDecisionInSheet(update: AgentAcces
   const spreadsheetId = process.env.AGENT_ACCESS_REQUESTS_SHEET_ID?.trim();
   if (!spreadsheetId) return;
 
-  const account = process.env.GOG_ACCOUNT?.trim() || DEFAULT_ACCOUNT;
+  const account = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim() || '';
   const lookupRange = process.env.AGENT_ACCESS_REQUESTS_SHEET_RANGE?.trim() || DEFAULT_RANGE;
-  const response = await gogJson(['sheets', 'get', spreadsheetId, lookupRange], { account });
+  const response = await sheetsJson(['sheets', 'get', spreadsheetId, lookupRange], { account });
   const values = Array.isArray(response?.values) ? response.values : [];
   const rowOffset = lookupRange.includes('!') && lookupRange.split('!')[1]?.match(/\d+/)
     ? Number(lookupRange.split('!')[1].match(/\d+/)?.[0] || 1) - 1
@@ -114,7 +111,7 @@ export async function updateAgentAccessRequestDecisionInSheet(update: AgentAcces
   const statusRange = `Sheet1!C${rowNumber}:N${rowNumber}`;
   const existing = values[rowIndex] || [];
 
-  await gogJson(
+  await sheetsJson(
     [
       'sheets',
       'update',
